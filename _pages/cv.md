@@ -13,6 +13,8 @@ Education
 ======
 * B.Tech. in Computer Engineering ,  Bharati Vidyapeeth university college of engineering Pune, 2022
 * Diploma in Network security , Bharati Vidyapeeth university college of engineering Pune, 2021
+
+
 Work experience
 ======
   * Aug 2022 -present: Junior Research Fellow
