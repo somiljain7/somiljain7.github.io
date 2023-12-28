@@ -1,14 +1,13 @@
 ---
-title: "Paper Title Number 2"
+title: "Summary of the DISPLACE Challenge 2023 -- DIarization of SPeaker and LAnguage in Conversational Environments"
 collection: publications
 permalink: /publication/2010-10-01-paper-title-number-2
-excerpt: 'This paper is about the number 2. The number 3 is left for future work.'
-date: 2010-10-01
-venue: 'Journal 1'
-paperurl: 'http://academicpages.github.io/files/paper2.pdf'
-citation: 'Your Name, You. (2010). &quot;Paper Title Number 2.&quot; <i>Journal 1</i>. 1(2).'
+excerpt: 'This paper is Preprint .'
+date: 2023-11-23
+venue: ''
+paperurl: 'https://arxiv.org/abs/2311.12564'
+citation: 'Baghel S, Ramoji S, Jain S, Chowdhuri PR, Singh P, Vijayasenan D, Ganapathy S. Summary of the DISPLACE Challenge 2023--DIarization of SPeaker and LAnguage in Conversational Environments. arXiv preprint arXiv:2311.12564. 2023 Nov 21.'
 ---
-This paper is about the number 2. The number 3 is left for future work.
 
 [Download paper here](http://academicpages.github.io/files/paper2.pdf)
 
