@@ -17,49 +17,61 @@ Education
 
 Work experience
 ======
-  * 
-    - Aerocraft Engineering (AI/ML developer)
-    - Duties included: Document Intelligience
-  * 
-    - Speech and Language Laboratory ,Nanyang Technologoical University , Singapore   (Remote Research Staff)
-    - Duties included: Speaker Diarization 
-    - Supervisor: Professor Dr. Chng Eng Siong
-  * 
-    - Indian Institute of Science (Project Assistant)
-    - Duties included: Speaker & Language Diarization (Displace 2023 special session @ Interspeech 2023)
-    - Supervisor: Professor Dr. Sriram Ganapathy
-  * 
-    - National Institue of Technology,Karnataka India  (Junior Research Fellow)
-    - Duties included: Language Diarization (Displace 2023 special session @ Interspeech 2023)
-    - Supervisor: Professor Dr. Deepu Vijayasenan
-  * 
-    - Stride.ai  (NLP intern)
-    - Duties included: Document intelligence
-    - Supervisor: Professor Dr. Deepu Vijayasenan
 
-  * 
-    - Marsview.ai inc  (AI intern)
-    - Duties included: Spoken Emotion Recognintion & Conversational AI
-  * 
-    - Finexus inc  (ML intern)
-    - Duties included: Document intelligence
-    
+## **AI/ML Developer** – Aerocraft Engineering  
+**Duties:** Document Intelligence  
+
+## **Remote Research Staff** – Speech and Language Laboratory, Nanyang Technological University, Singapore  
+**Duties:** Speaker Diarization  
+**Supervisor:** Professor Dr. Chng Eng Siong  
+
+## **Project Assistant** – Indian Institute of Science  
+**Duties:** Speaker & Language Diarization (DISPLACE 2023 Special Session @ Interspeech 2023)  
+**Supervisor:** Professor Dr. Sriram Ganapathy  
+
+## **Junior Research Fellow** – National Institute of Technology, Karnataka, India  
+**Duties:** Language Diarization (DISPLACE 2023 Special Session @ Interspeech 2023)  
+**Supervisor:** Professor Dr. Deepu Vijayasenan  
+
+## **NLP Intern** – Stride.ai  
+**Duties:** Document Intelligence  
+**Supervisor:** Professor Dr. Deepu Vijayasenan  
+
+## **AI Intern** – Marsview.ai Inc  
+**Duties:** Spoken Emotion Recognition & Conversational AI  
+
+## **ML Intern** – Finexus Inc  
+**Duties:** Document Intelligence  
 
 
-  
-Skills
+
+# Skills  
 ======
-* Programming languages
-  * CPP
-  * Python3
-* Shell Scripting
-* OpenFST
-* Kaldi
-* Tensorflow
-* Pytorch
-* Sql
-* flask
-* streamlit
+
+## **Programming Languages**  
+- C++  
+- Python  
+
+## **Development & Scripting**  
+- Shell Scripting  
+- slurm
+- docker
+- graphana
+  
+## **AI/ML Frameworks & Tools**  
+- OpenFST  
+- Kaldi  
+- TensorFlow  
+- PyTorch
+- langchain
+- ollama  
+
+## **Databases & Backend**  
+- SQL  
+- Flask  
+- Streamlit
+- fastapi
+  
 
 Publications
 ======
