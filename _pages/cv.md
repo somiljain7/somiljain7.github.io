@@ -17,10 +17,34 @@ Education
 
 Work experience
 ======
-  * Aug 2022 -present: Junior Research Fellow
-  * National Institue of Technology,Karnataka India
-  * Duties included: Language Diarization (Displace23 special session @ Interspeech 2023)
-  * Supervisor: Professor Dr. Deepu Vijayasenan
+  * 
+    - Aerocraft Engineering (AI/ML developer)
+    - Duties included: Document Intelligience
+  * 
+    - Speech and Language Laboratory ,Nanyang Technologoical University , Singapore   (Remote Research Staff)
+    - Duties included: Speaker Diarization 
+    - Supervisor: Professor Dr. Chng Eng Siong
+  * 
+    - Indian Institute of Science (Project Assistant)
+    - Duties included: Speaker & Language Diarization (Displace 2023 special session @ Interspeech 2023)
+    - Supervisor: Professor Dr. Sriram Ganapathy
+  * 
+    - National Institue of Technology,Karnataka India  (Junior Research Fellow)
+    - Duties included: Language Diarization (Displace 2023 special session @ Interspeech 2023)
+    - Supervisor: Professor Dr. Deepu Vijayasenan
+  * 
+    - Stride.ai  (NLP intern)
+    - Duties included: Document intelligence
+    - Supervisor: Professor Dr. Deepu Vijayasenan
+
+  * 
+    - Marsview.ai inc  (AI intern)
+    - Duties included: Spoken Emotion Recognintion & Conversational AI
+  * 
+    - Finexus inc  (ML intern)
+    - Duties included: Document intelligence
+    
+
 
   
 Skills
