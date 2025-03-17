@@ -35,7 +35,6 @@ Work experience
 
 ## **NLP Intern** – Stride.ai  
 **Duties:** Document Intelligence  
-**Supervisor:** Professor Dr. Deepu Vijayasenan  
 
 ## **AI Intern** – Marsview.ai Inc  
 **Duties:** Spoken Emotion Recognition & Conversational AI  
