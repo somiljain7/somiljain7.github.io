@@ -18,6 +18,9 @@ Education
 Work experience
 ======
 
+## **Founding AI Engineer** – Stealth Startup  
+**Duties:** Document Intelligence & Conversational AI (Healthcare)
+
 ## **AI/ML Developer** – Aerocraft Engineering  
 **Duties:** Document Intelligence  
 
@@ -63,13 +66,18 @@ Work experience
 - TensorFlow  
 - PyTorch
 - langchain
-- ollama  
+- ollama
+- langchain
+- ADK
+  
 
 ## **Databases & Backend**  
 - SQL  
 - Flask  
 - Streamlit
 - fastapi
+- S3
+- mongoDB
   
 
 Publications
