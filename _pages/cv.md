@@ -17,6 +17,9 @@ Education
 
 Work experience
 ======
+## **Founding ML Engineer** – VAANI AI RESEARCH  
+**Duties:** Building Conversation Voice infrastructure 
+
 
 ## **Founding AI Engineer** – Stealth Startup  
 **Duties:** Document Intelligence & Conversational AI (Healthcare)
