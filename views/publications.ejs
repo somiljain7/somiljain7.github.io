@@ -1,0 +1,56 @@
+<div class="publications-page">
+  <div class="publications-header">
+    <h1>Publications</h1>
+    <p class="subtitle">Research & Academic Papers</p>
+  </div>
+
+  <div class="publications-content">
+    <% if (publications && publications.length > 0) { %>
+      <div class="publications-list">
+        <% publications.forEach((pub, index) => { %>
+          <article class="publication-item">
+            <div class="publication-number">
+              <%= publications.length - index %>
+            </div>
+            <div class="publication-details">
+              <h3 class="publication-title">
+                <% if (pub.paperurl && pub.paperurl !== '#') { %>
+                  <a href="<%= pub.paperurl %>" target="_blank" rel="noopener noreferrer">
+                    <%= pub.title %>
+                  </a>
+                <% } else { %>
+                  <%= pub.title %>
+                <% } %>
+              </h3>
+              
+              <p class="publication-venue">
+                <strong>Venue:</strong> <%= pub.venue %>
+              </p>
+
+              <p class="publication-date">
+                <strong>Date:</strong> <%= pub.date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+              </p>
+
+              <% if (pub.citation) { %>
+                <details class="publication-citation">
+                  <summary>Citation</summary>
+                  <pre><code><%= pub.citation %></code></pre>
+                </details>
+              <% } %>
+
+              <% if (pub.paperurl && pub.paperurl !== '#') { %>
+                <div class="publication-links">
+                  <a href="<%= pub.paperurl %>" target="_blank" class="pub-link">📄 View Paper</a>
+                </div>
+              <% } %>
+            </div>
+          </article>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <div class="no-publications">
+        <p>No publications yet. Check back soon!</p>
+      </div>
+    <% } %>
+  </div>
+</div>

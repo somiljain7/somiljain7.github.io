@@ -1,0 +1,42 @@
+<div class="blog-index">
+  <% posts.forEach(post => { %>
+    <article class="post-preview">
+      <h2 class="post-title">
+        <a href="/post/<%= post.slug %>"><%= post.title %></a>
+      </h2>
+      <div class="post-meta">
+        <time datetime="<%= post.date.toISOString() %>">
+          <%= post.date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+        </time>
+        <% if (post.categories.length > 0) { %>
+          <span class="categories">
+            <% post.categories.forEach(cat => { %>
+              <a href="/category/<%= cat %>" class="category-tag"><%= cat %></a>
+            <% }); %>
+          </span>
+        <% } %>
+      </div>
+      <p class="post-excerpt"><%= post.excerpt %></p>
+      <% if (post.tags.length > 0) { %>
+        <div class="tags">
+          <% post.tags.forEach(tag => { %>
+            <a href="/tag/<%= tag %>" class="tag">#<%= tag %></a>
+          <% }); %>
+        </div>
+      <% } %>
+      <a href="/post/<%= post.slug %>" class="read-more">Read more →</a>
+    </article>
+  <% }); %>
+
+  <% if (pages > 1) { %>
+    <div class="pagination">
+      <% if (page > 1) { %>
+        <a href="/?page=<%= page - 1 %>" class="prev">← Previous</a>
+      <% } %>
+      <span class="page-info">Page <%= page %> of <%= pages %></span>
+      <% if (page < pages) { %>
+        <a href="/?page=<%= page + 1 %>" class="next">Next →</a>
+      <% } %>
+    </div>
+  <% } %>
+</div>

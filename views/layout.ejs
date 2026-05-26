@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title + ' - ' : '' %>CODERATWORK7</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="alternate" type="application/rss+xml" href="/feed">
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="dark-mode-toggle" class="dark-mode-toggle" title="Toggle Dark Mode">🌙</div>
+  
+  <header class="header">
+    <nav class="navbar">
+      <div class="container">
+        <div class="nav-brand">
+          <h1 class="site-title"><a href="/">[ CODERATWORK7 ]</a></h1>
+          <span class="site-subtitle">ML Research Engineer</span>
+        </div>
+        
+        <div class="nav-center">
+          <input type="text" id="search-box" placeholder="Search posts..." class="search-input" />
+        </div>
+
+        <ul class="nav-links">
+          <li><a href="/" class="nav-link">Blog</a></li>
+          <li><a href="/about" class="nav-link">About</a></li>
+          <li><a href="/cv" class="nav-link">CV</a></li>
+          <li><a href="/publications" class="nav-link">Publications</a></li>
+          <li><a href="/archives" class="nav-link">Archive</a></li>
+        </ul>
+      </div>
+    </nav>
+  </header>
+
+  <div id="search-results" class="search-results hidden"></div>
+
+  <main class="container">
+    <%- body %>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>CODERATWORK7</h3>
+        <p>ML Research Engineer passionate about speech processing, document intelligence, and conversational AI.</p>
+      </div>
+      <div class="footer-section">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="/">Blog</a></li>
+          <li><a href="/about">About</a></li>
+          <li><a href="/cv">CV</a></li>
+          <li><a href="/publications">Publications</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Connect</h4>
+        <ul>
+          <li><a href="https://github.com/somiljain7" target="_blank">GitHub</a></li>
+          <li><a href="https://x.com/coderatwork7" target="_blank">Twitter/X</a></li>
+          <li><a href="https://www.linkedin.com/in/somiljain7/" target="_blank">LinkedIn</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Somil Jain • Built with Node.js & ❤️</p>
+    </div>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

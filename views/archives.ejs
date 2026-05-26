@@ -1,0 +1,21 @@
+<div class="archives-page">
+  <h1>Archives</h1>
+  
+  <% Object.keys(grouped).sort((a, b) => b - a).forEach(year => { %>
+    <section class="year-section">
+      <h2 class="year-header"><%= year %></h2>
+      <ul class="posts-by-year">
+        <% grouped[year].forEach(post => { %>
+          <li>
+            <time class="archive-date"><%= post.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></time>
+            <a href="/post/<%= post.slug %>"><%= post.title %></a>
+          </li>
+        <% }); %>
+      </ul>
+    </section>
+  <% }); %>
+
+  <nav class="back-nav">
+    <a href="/" class="back-link">← Back to posts</a>
+  </nav>
+</div>

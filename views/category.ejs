@@ -1,0 +1,23 @@
+<div class="category-page">
+  <h1>Category: <%= category %></h1>
+  <p class="count"><%= count %> post<%= count !== 1 ? 's' : '' %> found</p>
+
+  <div class="posts-list">
+    <% posts.forEach(post => { %>
+      <article class="post-preview">
+        <h2 class="post-title">
+          <a href="/post/<%= post.slug %>"><%= post.title %></a>
+        </h2>
+        <div class="post-meta">
+          <time><%= post.date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></time>
+        </div>
+        <p class="post-excerpt"><%= post.excerpt %></p>
+        <a href="/post/<%= post.slug %>" class="read-more">Read more →</a>
+      </article>
+    <% }); %>
+  </div>
+
+  <nav class="back-nav">
+    <a href="/" class="back-link">← Back to all posts</a>
+  </nav>
+</div>
