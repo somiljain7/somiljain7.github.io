@@ -415,6 +415,14 @@ main {
   color: var(--fg);
 }
 
+.post-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 20px auto;
+  border-radius: 8px;
+}
+
 .post-content h1 {
   font-size: 28px;
   margin: 32px 0 16px;
