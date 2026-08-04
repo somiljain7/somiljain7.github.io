@@ -32,6 +32,157 @@ darkModeToggle.addEventListener('click', () => {
   localStorage.setItem('darkMode', isDarkMode);
 });
 
+// Hero: typewriter tagline
+(function () {
+  const el = document.getElementById('hero-typed');
+  if (!el) return;
+
+  const lines = [
+    'ML Research Engineer — Speech & Audio',
+    'building streaming STT/TTS infrastructure',
+    'speaker diarization · language ID · document intelligence'
+  ];
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (reduceMotion) {
+    el.textContent = lines[0];
+    return;
+  }
+
+  let lineIndex = 0;
+  let charIndex = 0;
+  let deleting = false;
+
+  function tick() {
+    const current = lines[lineIndex];
+    charIndex += deleting ? -1 : 1;
+    el.innerHTML = current.slice(0, charIndex) + '<span class="cursor"></span>';
+
+    let delay = deleting ? 30 : 55;
+
+    if (!deleting && charIndex === current.length) {
+      delay = 1600;
+      deleting = true;
+    } else if (deleting && charIndex === 0) {
+      deleting = false;
+      lineIndex = (lineIndex + 1) % lines.length;
+      delay = 300;
+    }
+
+    setTimeout(tick, delay);
+  }
+
+  tick();
+})();
+
+// Hero: waveform canvas
+(function () {
+  const canvas = document.getElementById('hero-wave');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * devicePixelRatio;
+    canvas.height = rect.height * devicePixelRatio;
+  }
+
+  function accentColor() {
+    return getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#2dd4bf';
+  }
+
+  let t = 0;
+  function draw() {
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = accentColor();
+    ctx.lineWidth = 2 * devicePixelRatio;
+    ctx.lineCap = 'round';
+
+    const bars = Math.floor(w / (6 * devicePixelRatio));
+    const gap = w / bars;
+
+    for (let i = 0; i < bars; i++) {
+      const amp =
+        Math.sin(i * 0.35 + t) * 0.35 +
+        Math.sin(i * 0.12 - t * 1.7) * 0.4 +
+        0.5;
+      const barH = Math.max(4, amp * h * 0.85);
+      const x = i * gap + gap / 2;
+      ctx.globalAlpha = 0.35 + amp * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x, h / 2 - barH / 2);
+      ctx.lineTo(x, h / 2 + barH / 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+
+  if (reduceMotion) {
+    draw();
+    return;
+  }
+
+  function animate() {
+    t += 0.045;
+    draw();
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// Mobile nav toggle
+const navToggle = document.getElementById('nav-toggle');
+const navLinks = document.getElementById('nav-links');
+
+if (navToggle && navLinks) {
+  navToggle.addEventListener('click', () => {
+    const isOpen = navLinks.classList.toggle('open');
+    navToggle.classList.toggle('open', isOpen);
+    navToggle.setAttribute('aria-expanded', String(isOpen));
+  });
+
+  navLinks.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      navLinks.classList.remove('open');
+      navToggle.classList.remove('open');
+      navToggle.setAttribute('aria-expanded', 'false');
+    });
+  });
+}
+
+// Scroll-reveal animations
+(function () {
+  const targets = document.querySelectorAll(
+    '.intro-card, .expertise-item, .about-journey, ' +
+    '.timeline-item, .skill-group, .publication-item, .year-section, .related-item'
+  );
+  if (!targets.length) return;
+
+  targets.forEach(el => el.classList.add('reveal'));
+
+  if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    targets.forEach(el => el.classList.add('in-view'));
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in-view');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  targets.forEach(el => observer.observe(el));
+})();
+
 // Search functionality
 const searchBox = document.getElementById('search-box');
 const searchResults = document.getElementById('search-results');

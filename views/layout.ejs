@@ -16,7 +16,10 @@
     <nav class="navbar">
       <div class="container">
         <div class="nav-brand">
-          <h1 class="site-title"><a href="/">[ CODERATWORK7 ]</a></h1>
+          <h1 class="site-title">
+            <a href="/">[ CODERATWORK7 ]</a>
+            <span class="eq-bars" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></span>
+          </h1>
           <span class="site-subtitle">ML Research Engineer</span>
         </div>
         
@@ -24,7 +27,11 @@
           <input type="text" id="search-box" placeholder="Search posts..." class="search-input" />
         </div>
 
-        <ul class="nav-links">
+        <button id="nav-toggle" class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+
+        <ul id="nav-links" class="nav-links">
           <li><a href="/" class="nav-link">Blog</a></li>
           <li><a href="/about" class="nav-link">About</a></li>
           <li><a href="/cv" class="nav-link">CV</a></li>
