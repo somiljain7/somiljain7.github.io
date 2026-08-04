@@ -90,6 +90,78 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Image lightbox with zoom for post content images
+(function () {
+  const images = document.querySelectorAll('.post-content img');
+  if (!images.length) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'lightbox-overlay hidden';
+  overlay.innerHTML = `
+    <div class="lightbox-toolbar">
+      <button type="button" class="lightbox-btn" data-action="zoom-out" aria-label="Zoom out">−</button>
+      <button type="button" class="lightbox-btn" data-action="zoom-reset" aria-label="Reset zoom">⤢</button>
+      <button type="button" class="lightbox-btn" data-action="zoom-in" aria-label="Zoom in">+</button>
+      <button type="button" class="lightbox-btn lightbox-close" data-action="close" aria-label="Close">✕</button>
+    </div>
+    <div class="lightbox-stage">
+      <img class="lightbox-img" src="" alt="" />
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const stage = overlay.querySelector('.lightbox-stage');
+  const lightboxImg = overlay.querySelector('.lightbox-img');
+  let scale = 1;
+  const MIN_SCALE = 0.5;
+  const MAX_SCALE = 4;
+
+  function setScale(newScale) {
+    scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
+    lightboxImg.style.transform = `scale(${scale})`;
+  }
+
+  function openLightbox(src, alt) {
+    lightboxImg.src = src;
+    lightboxImg.alt = alt || '';
+    setScale(1);
+    overlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    overlay.classList.add('hidden');
+    lightboxImg.src = '';
+    document.body.style.overflow = '';
+  }
+
+  images.forEach(img => {
+    img.classList.add('zoomable-img');
+    img.addEventListener('click', () => openLightbox(img.src, img.alt));
+  });
+
+  overlay.addEventListener('click', (e) => {
+    const action = e.target.dataset.action;
+    if (action === 'zoom-in') setScale(scale + 0.25);
+    else if (action === 'zoom-out') setScale(scale - 0.25);
+    else if (action === 'zoom-reset') setScale(1);
+    else if (action === 'close' || e.target === overlay || e.target === stage) closeLightbox();
+  });
+
+  overlay.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    setScale(scale + (e.deltaY < 0 ? 0.15 : -0.15));
+  }, { passive: false });
+
+  document.addEventListener('keydown', (e) => {
+    if (overlay.classList.contains('hidden')) return;
+    if (e.key === 'Escape') closeLightbox();
+    else if (e.key === '+' || e.key === '=') setScale(scale + 0.25);
+    else if (e.key === '-') setScale(scale - 0.25);
+    else if (e.key === '0') setScale(1);
+  });
+})();
+
 // Smooth scroll for anchor links
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener('click', function (e) {
