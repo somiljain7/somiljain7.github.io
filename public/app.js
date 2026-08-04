@@ -8,7 +8,7 @@ let isDarkMode;
 if (darkModePreference !== null) {
   isDarkMode = darkModePreference === 'true';
 } else {
-  isDarkMode = !window.matchMedia('(prefers-color-scheme: light)').matches;
+  isDarkMode = true;
 }
 
 // Apply initial theme
