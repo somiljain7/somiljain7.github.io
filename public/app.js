@@ -32,6 +32,47 @@ darkModeToggle.addEventListener('click', () => {
   localStorage.setItem('darkMode', isDarkMode);
 });
 
+// Background music toggle
+(function () {
+  const btn = document.getElementById('music-toggle');
+  const audio = document.getElementById('bg-audio');
+  const icon = btn ? btn.querySelector('.music-icon') : null;
+  if (!btn || !audio) return;
+
+  audio.volume = 0.35;
+  let userPaused = localStorage.getItem('bgMusicPlaying') !== 'true';
+
+  function setPlaying(playing) {
+    btn.classList.toggle('playing', playing);
+    btn.setAttribute('aria-pressed', String(playing));
+    btn.title = playing ? 'Pause background music' : 'Play background music';
+    if (icon) icon.textContent = playing ? '🎵' : '🎧';
+  }
+
+  btn.addEventListener('click', async () => {
+    if (audio.paused) {
+      try {
+        await audio.play();
+        userPaused = false;
+        setPlaying(true);
+        localStorage.setItem('bgMusicPlaying', 'true');
+      } catch (err) {
+        btn.title = 'No track found at /audio/ambient.mp3';
+        console.warn('Background music unavailable:', err.message);
+      }
+    } else {
+      audio.pause();
+      userPaused = true;
+      setPlaying(false);
+      localStorage.setItem('bgMusicPlaying', 'false');
+    }
+  });
+
+  if (!userPaused) {
+    audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+  }
+})();
+
 // Hero: typewriter tagline
 (function () {
   const el = document.getElementById('hero-typed');
