@@ -45,7 +45,7 @@ Each of those would come back from Jev as an actual number, not a sentence, at l
 
 ## The flow, drawn out
 
-![Flow of a shaky transcript through independent probability checks: name match, amount clarity, clipped negation, human handoff](/assets/images/jev-flowchart.png)
+![Flow of a shaky transcript through independent probability checks: name match, amount clarity, clipped negation, human handoff](/images/jev-flowchart.png)
 
 One transcript in, several honest probabilities out, each about a different risky piece of the sentence, all read at once instead of one blanket "confidence" guess.
 
