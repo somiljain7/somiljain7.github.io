@@ -12,6 +12,15 @@ import matter from 'gray-matter';
 import { marked } from 'marked';
 import 'dotenv/config';
 
+import {
+  getDb,
+  syncLocalPostsToMongo,
+  getMongoPosts,
+  getMongoPostBySlug,
+  saveMongoPost,
+  deleteMongoPost
+} from './lib/db.js';
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -23,6 +32,8 @@ const PUBLIC_DIR = path.join(BASE_DIR, 'public');
 const UPLOADS_DIR = path.join(PUBLIC_DIR, 'uploads');
 const PUBLICATIONS_DIR = path.join(BASE_DIR, '_publications');
 const VIEWS_DIR = path.join(BASE_DIR, 'views');
+const TMP_UPLOADS_DIR = path.join('/tmp', 'uploads');
+const TMP_POSTS_DIR = path.join('/tmp', '_posts');
 
 // Configuration & Secrets
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'diarypassword123';
@@ -33,7 +44,7 @@ const SITE_SUBTITLE = process.env.SITE_SUBTITLE || 'ML Research Engineer & Neura
 const SITE_AUTHOR = process.env.SITE_AUTHOR || 'CODERATWORK7';
 
 // Ensure directories exist (wrapped in try/catch for read-only serverless runtimes)
-[POSTS_DIR, UPLOADS_DIR, PUBLICATIONS_DIR].forEach(dir => {
+[POSTS_DIR, UPLOADS_DIR, PUBLICATIONS_DIR, TMP_UPLOADS_DIR, TMP_POSTS_DIR].forEach(dir => {
   try {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -43,10 +54,16 @@ const SITE_AUTHOR = process.env.SITE_AUTHOR || 'CODERATWORK7';
   }
 });
 
-// Multer storage for image uploads
+// Multer storage for image uploads with /tmp fallback
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, UPLOADS_DIR);
+    let dest = UPLOADS_DIR;
+    try {
+      fs.accessSync(UPLOADS_DIR, fs.constants.W_OK);
+    } catch (e) {
+      dest = TMP_UPLOADS_DIR;
+    }
+    cb(null, dest);
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
@@ -57,7 +74,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
   storage,
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB max file size
+  limits: { fileSize: 15 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = /jpeg|jpg|png|gif|webp|svg|mp3|wav|ogg|pdf|txt|zip/;
     const ext = path.extname(file.originalname).toLowerCase().slice(1);
@@ -79,10 +96,12 @@ marked.setOptions({
 // Middleware
 app.use(compression());
 app.use(express.static(PUBLIC_DIR));
+app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/uploads', express.static(TMP_UPLOADS_DIR));
 app.use(express.text({ type: ['text/plain', 'text/markdown'], limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Explicit static handlers to guarantee CSS/JS are always served on Vercel
+// Explicit static handlers for Vercel
 app.get('/style.css', (req, res) => {
   const filePath = path.join(PUBLIC_DIR, 'style.css');
   if (fs.existsSync(filePath)) {
@@ -117,7 +136,6 @@ app.use((req, res, next) => {
         next();
       } catch (err) {
         try {
-          // Replace unescaped control characters inside JSON strings (e.g. raw newlines from bash curl)
           let inString = false;
           let escaped = false;
           let sanitized = '';
@@ -155,10 +173,10 @@ app.set('view engine', 'ejs');
 app.set('views', VIEWS_DIR);
 app.set('layout', 'layout');
 
-// Rate limiter for API and Auth routes
+// Rate limiter
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 50,
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' }
@@ -172,56 +190,37 @@ function generateAuthToken() {
 // Helper: Check authentication
 function checkAuth(req) {
   const token = generateAuthToken();
-  
-  // 1. Check signed/unsigned cookie
-  if (req.cookies && req.cookies.diary_auth === token) {
-    return true;
-  }
+  if (req.cookies && req.cookies.diary_auth === token) return true;
 
-  // 2. Check Authorization Header: Bearer <API_KEY> or Bearer <PASSWORD>
   const authHeader = req.headers['authorization'];
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const bearer = authHeader.slice(7).trim();
-    if (bearer === API_KEY || bearer === ADMIN_PASSWORD) {
-      return true;
-    }
+    if (bearer === API_KEY || bearer === ADMIN_PASSWORD) return true;
   }
 
-  // 3. Check X-API-Key Header
   const apiKeyHeader = req.headers['x-api-key'];
-  if (apiKeyHeader && (apiKeyHeader === API_KEY || apiKeyHeader === ADMIN_PASSWORD)) {
-    return true;
-  }
+  if (apiKeyHeader && (apiKeyHeader === API_KEY || apiKeyHeader === ADMIN_PASSWORD)) return true;
 
-  // 4. Check Query Parameter (?api_key=...)
-  if (req.query && (req.query.api_key === API_KEY || req.query.api_key === ADMIN_PASSWORD)) {
-    return true;
-  }
+  if (req.query && (req.query.api_key === API_KEY || req.query.api_key === ADMIN_PASSWORD)) return true;
 
   return false;
 }
 
-// Auth Middleware for Web Routes
 function requireWebAuth(req, res, next) {
-  if (checkAuth(req)) {
-    return next();
-  }
+  if (checkAuth(req)) return next();
   const returnTo = encodeURIComponent(req.originalUrl || '/admin');
   return res.redirect(`/login?next=${returnTo}`);
 }
 
-// Auth Middleware for API Routes
 function requireApiAuth(req, res, next) {
-  if (checkAuth(req)) {
-    return next();
-  }
+  if (checkAuth(req)) return next();
   return res.status(401).json({
     error: 'Unauthorized',
     message: 'Provide valid Authorization: Bearer <API_KEY> or X-API-Key header.'
   });
 }
 
-// Inject Global Template Variables
+// Template Variables
 app.use((req, res, next) => {
   res.locals.isAuthenticated = checkAuth(req);
   res.locals.siteTitle = SITE_TITLE;
@@ -232,17 +231,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// In-Memory Cache for Blog & Diary posts
-let postsCache = null;
-let cacheTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-function invalidateCache() {
-  postsCache = null;
-  cacheTime = 0;
+// Cache & Sync on boot
+let initialSynced = false;
+async function ensureDbSynced() {
+  if (!initialSynced && process.env.MONGODB_URI) {
+    initialSynced = true;
+    syncLocalPostsToMongo(POSTS_DIR).catch(e => console.warn('Background Mongo sync:', e.message));
+  }
 }
+ensureDbSynced();
 
-// Slug generator helper
 function slugify(text) {
   return text
     .toString()
@@ -252,79 +250,105 @@ function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
-// Calculate reading time
 function calculateReadingTime(text) {
-  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  const words = (text || '').trim().split(/\s+/).filter(Boolean).length;
   const minutes = Math.max(1, Math.ceil(words / 200));
   return { minutes, words };
 }
 
-// Load blog & diary posts
-function loadPosts(options = { includeAll: false }) {
-  const now = Date.now();
-  if (!postsCache || (now - cacheTime) >= CACHE_DURATION) {
-    if (!fs.existsSync(POSTS_DIR)) {
-      postsCache = [];
-    } else {
-      const files = fs.readdirSync(POSTS_DIR).filter(f => f.endsWith('.md'));
-      
-      postsCache = files.map(file => {
-        const fullPath = path.join(POSTS_DIR, file);
-        const fileContent = fs.readFileSync(fullPath, 'utf-8');
-        const { data, content: body } = matter(fileContent);
-        
-        // Extract date from filename if not in frontmatter
-        const dateMatch = file.match(/^(\d{4}-\d{2}-\d{2})/);
-        const postDate = data.date ? new Date(data.date) : (dateMatch ? new Date(dateMatch[1]) : new Date());
-        
-        // Slug extracted from filename
-        const slug = file.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/\.md$/, '');
-        
-        const categories = Array.isArray(data.categories) 
-          ? data.categories 
-          : (data.categories ? [data.categories] : (data.category ? [data.category] : ['Diary']));
-          
-        const tags = Array.isArray(data.tags) 
-          ? data.tags 
-          : (typeof data.tags === 'string' ? data.tags.split(',').map(t => t.trim()).filter(Boolean) : []);
+// Load posts from MongoDB or local fallback
+async function loadPosts(options = { includeAll: false }) {
+  await ensureDbSynced();
 
-        const stats = calculateReadingTime(body);
-        const excerpt = data.excerpt || body.replace(/[#*`_~\[\]]/g, '').trim().substring(0, 160) + '...';
-        const visibility = data.visibility || (data.private ? 'private' : 'public');
-
-        return {
-          filename: file,
-          slug,
-          title: data.title || slug.replace(/-/g, ' '),
-          date: postDate,
-          categories,
-          tags,
-          mood: data.mood || null,
-          visibility, // 'public', 'private', 'unlisted'
-          pinned: Boolean(data.pinned),
-          excerpt,
-          wordCount: stats.words,
-          readingTime: stats.minutes,
-          rawContent: body,
-          content: marked(body)
-        };
-      }).sort((a, b) => {
-        if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
-        return b.date - a.date;
-      });
+  // Try MongoDB Atlas first
+  if (process.env.MONGODB_URI) {
+    const mongoPosts = await getMongoPosts(options);
+    if (mongoPosts && mongoPosts.length > 0) {
+      return mongoPosts;
     }
-    cacheTime = now;
   }
 
-  if (options.includeAll) {
-    return postsCache;
+  // Local filesystem fallback
+  const allFilesMap = new Map();
+  if (fs.existsSync(POSTS_DIR)) {
+    try {
+      fs.readdirSync(POSTS_DIR).filter(f => f.endsWith('.md')).forEach(f => {
+        allFilesMap.set(f, path.join(POSTS_DIR, f));
+      });
+    } catch (e) {}
+  }
+  if (fs.existsSync(TMP_POSTS_DIR)) {
+    try {
+      fs.readdirSync(TMP_POSTS_DIR).filter(f => f.endsWith('.md')).forEach(f => {
+        allFilesMap.set(f, path.join(TMP_POSTS_DIR, f));
+      });
+    } catch (e) {}
   }
 
-  // If not authenticated and not explicitly asking for all, only return public posts
-  return postsCache.filter(p => p.visibility === 'public');
+  const posts = [];
+  for (const [file, fullPath] of allFilesMap.entries()) {
+    try {
+      const fileContent = fs.readFileSync(fullPath, 'utf-8');
+      const { data, content: body } = matter(fileContent);
+      
+      const dateMatch = file.match(/^(\d{4}-\d{2}-\d{2})/);
+      const postDate = data.date ? new Date(data.date) : (dateMatch ? new Date(dateMatch[1]) : new Date());
+      const slug = file.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/\.md$/, '');
+      
+      const categories = Array.isArray(data.categories) 
+        ? data.categories 
+        : (data.categories ? [data.categories] : (data.category ? [data.category] : ['Engineering']));
+        
+      const tags = Array.isArray(data.tags) 
+        ? data.tags 
+        : (typeof data.tags === 'string' ? data.tags.split(',').map(t => t.trim()).filter(Boolean) : []);
+
+      const stats = calculateReadingTime(body);
+      const excerpt = data.excerpt || body.replace(/[#*`_~\[\]]/g, '').trim().substring(0, 160) + '...';
+      const visibility = data.visibility || (data.private ? 'private' : 'public');
+
+      posts.push({
+        filename: file,
+        slug,
+        title: data.title || slug.replace(/-/g, ' '),
+        date: postDate,
+        categories,
+        tags,
+        mood: data.mood || null,
+        visibility,
+        pinned: Boolean(data.pinned),
+        excerpt,
+        wordCount: stats.words,
+        readingTime: stats.minutes,
+        rawContent: body,
+        content: marked(body)
+      });
+    } catch (err) {
+      console.error(`Error loading post ${file}:`, err.message);
+    }
+  }
+
+  const sorted = posts.sort((a, b) => {
+    if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
+    return b.date - a.date;
+  });
+
+  if (options.includeAll) return sorted;
+  return sorted.filter(p => p.visibility === 'public');
 }
 
-// Helper: Calculate Streak and Heatmap Data
+// Single post lookup
+async function loadSinglePost(slug) {
+  if (process.env.MONGODB_URI) {
+    const post = await getMongoPostBySlug(slug);
+    if (post) return post;
+  }
+
+  const all = await loadPosts({ includeAll: true });
+  return all.find(p => p.slug === slug);
+}
+
+// Calculate Streak and Stats
 function getDiaryStats(posts) {
   const dateCounts = {};
   let totalWords = 0;
@@ -334,33 +358,20 @@ function getDiaryStats(posts) {
 
   posts.forEach(post => {
     totalWords += post.wordCount || 0;
-    
-    // Date key YYYY-MM-DD
     const dStr = post.date.toISOString().split('T')[0];
     dateCounts[dStr] = (dateCounts[dStr] || 0) + 1;
 
-    if (post.mood) {
-      moodCounts[post.mood] = (moodCounts[post.mood] || 0) + 1;
-    }
+    if (post.mood) moodCounts[post.mood] = (moodCounts[post.mood] || 0) + 1;
 
-    post.categories.forEach(c => {
-      categoryCounts[c] = (categoryCounts[c] || 0) + 1;
-    });
-
-    post.tags.forEach(t => {
-      tagCounts[t] = (tagCounts[t] || 0) + 1;
-    });
+    post.categories.forEach(c => { categoryCounts[c] = (categoryCounts[c] || 0) + 1; });
+    post.tags.forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; });
   });
 
-  // Calculate current streak
   let streak = 0;
   const today = new Date();
   let checkDate = new Date(today);
-  
-  // Format check
   const formatD = d => d.toISOString().split('T')[0];
   
-  // If posted today, count today, else check yesterday
   if (dateCounts[formatD(checkDate)]) {
     streak++;
     checkDate.setDate(checkDate.getDate() - 1);
@@ -384,26 +395,17 @@ function getDiaryStats(posts) {
   };
 }
 
-// Create or update post file helper
-function savePostFile({ originalFilename, slug, title, content, date, categories, tags, mood, visibility, excerpt, pinned }) {
+// Save post helper (MongoDB + local fallback)
+async function savePostFile({ originalFilename, slug, title, content, date, categories, tags, mood, visibility, excerpt, pinned }) {
   const d = date ? new Date(date) : new Date();
   const datePrefix = d.toISOString().split('T')[0];
   const finalSlug = slugify(slug || title || 'diary-entry');
   const filename = `${datePrefix}-${finalSlug}.md`;
-  const filePath = path.join(POSTS_DIR, filename);
-
-  // If editing and filename changed, remove old file
-  if (originalFilename && originalFilename !== filename) {
-    const oldPath = path.join(POSTS_DIR, originalFilename);
-    if (fs.existsSync(oldPath)) {
-      fs.unlinkSync(oldPath);
-    }
-  }
 
   const frontmatter = {
     title: title || 'Untitled Entry',
     date: datePrefix,
-    categories: Array.isArray(categories) ? categories : (categories ? categories.split(',').map(c => c.trim()).filter(Boolean) : ['Diary']),
+    categories: Array.isArray(categories) ? categories : (categories ? categories.split(',').map(c => c.trim()).filter(Boolean) : ['Engineering']),
     tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : []),
     mood: mood || null,
     visibility: visibility || 'public',
@@ -411,9 +413,38 @@ function savePostFile({ originalFilename, slug, title, content, date, categories
     pinned: Boolean(pinned)
   };
 
-  const fileData = matter.stringify(content || '', frontmatter);
-  fs.writeFileSync(filePath, fileData, 'utf-8');
-  invalidateCache();
+  // 1. Save to MongoDB Atlas (Persistent Cloud Storage)
+  if (process.env.MONGODB_URI) {
+    await saveMongoPost({
+      slug: finalSlug,
+      title: frontmatter.title,
+      content: content || '',
+      date: d,
+      categories: frontmatter.categories,
+      tags: frontmatter.tags,
+      mood: frontmatter.mood,
+      visibility: frontmatter.visibility,
+      pinned: frontmatter.pinned,
+      excerpt: frontmatter.excerpt
+    });
+  }
+
+  // 2. Also try writing locally / to /tmp
+  try {
+    const fileData = matter.stringify(content || '', frontmatter);
+    const filePath = path.join(POSTS_DIR, filename);
+    if (originalFilename && originalFilename !== filename) {
+      const oldPath = path.join(POSTS_DIR, originalFilename);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+    fs.writeFileSync(filePath, fileData, 'utf-8');
+  } catch (err) {
+    try {
+      const fileData = matter.stringify(content || '', frontmatter);
+      const tmpPath = path.join(TMP_POSTS_DIR, filename);
+      fs.writeFileSync(tmpPath, fileData, 'utf-8');
+    } catch (e) {}
+  }
 
   return {
     filename,
@@ -423,14 +454,34 @@ function savePostFile({ originalFilename, slug, title, content, date, categories
   };
 }
 
+// Delete post helper
+async function deletePostFile(slug) {
+  if (process.env.MONGODB_URI) {
+    await deleteMongoPost(slug);
+  }
+
+  const all = await loadPosts({ includeAll: true });
+  const post = all.find(p => p.slug === slug);
+  if (post && post.filename) {
+    try {
+      const p1 = path.join(POSTS_DIR, post.filename);
+      if (fs.existsSync(p1)) fs.unlinkSync(p1);
+    } catch (e) {}
+    try {
+      const p2 = path.join(TMP_POSTS_DIR, post.filename);
+      if (fs.existsSync(p2)) fs.unlinkSync(p2);
+    } catch (e) {}
+  }
+  return true;
+}
+
 // ==========================================
 // PUBLIC WEB ROUTES
 // ==========================================
 
-// Homepage / Journal Feed
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
   const isAuth = checkAuth(req);
-  const posts = loadPosts({ includeAll: isAuth });
+  const posts = await loadPosts({ includeAll: isAuth });
   const page = parseInt(req.query.page) || 1;
   const perPage = 10;
   const total = posts.length;
@@ -449,26 +500,22 @@ app.get('/', (req, res) => {
   });
 });
 
-// Single Post / Diary Entry View
-app.get('/post/:slug', (req, res) => {
+app.get('/post/:slug', async (req, res) => {
   const isAuth = checkAuth(req);
-  const allPosts = loadPosts({ includeAll: true });
-  const post = allPosts.find(p => p.slug === req.params.slug);
+  const post = await loadSinglePost(req.params.slug);
 
   if (!post) {
     return res.status(404).render('404', { title: 'Entry Not Found' });
   }
 
-  // Check privacy permissions
   if (post.visibility === 'private' && !isAuth) {
     return res.status(403).render('404', { 
       title: 'Private Entry',
-      message: 'This diary entry is private. Please login to view.' 
+      message: 'This entry is private. Please authenticate to view.' 
     });
   }
 
-  // Related posts (from visible set)
-  const visiblePosts = loadPosts({ includeAll: isAuth });
+  const visiblePosts = await loadPosts({ includeAll: isAuth });
   const related = visiblePosts
     .filter(p => p.slug !== post.slug && p.tags.some(t => post.tags.includes(t)))
     .slice(0, 3);
@@ -476,10 +523,9 @@ app.get('/post/:slug', (req, res) => {
   res.render('post', { post, related, title: post.title });
 });
 
-// Category filter
-app.get('/category/:category', (req, res) => {
+app.get('/category/:category', async (req, res) => {
   const isAuth = checkAuth(req);
-  const posts = loadPosts({ includeAll: isAuth });
+  const posts = await loadPosts({ includeAll: isAuth });
   const filtered = posts.filter(p => 
     p.categories.some(c => c.toLowerCase() === req.params.category.toLowerCase())
   );
@@ -492,10 +538,9 @@ app.get('/category/:category', (req, res) => {
   });
 });
 
-// Tag filter
-app.get('/tag/:tag', (req, res) => {
+app.get('/tag/:tag', async (req, res) => {
   const isAuth = checkAuth(req);
-  const posts = loadPosts({ includeAll: isAuth });
+  const posts = await loadPosts({ includeAll: isAuth });
   const filtered = posts.filter(p => 
     p.tags.some(t => t.toLowerCase() === req.params.tag.toLowerCase())
   );
@@ -508,10 +553,9 @@ app.get('/tag/:tag', (req, res) => {
   });
 });
 
-// Archives (Grouped by Year and Month)
-app.get('/archives', (req, res) => {
+app.get('/archives', async (req, res) => {
   const isAuth = checkAuth(req);
-  const posts = loadPosts({ includeAll: isAuth });
+  const posts = await loadPosts({ includeAll: isAuth });
   const grouped = {};
 
   posts.forEach(post => {
@@ -525,26 +569,22 @@ app.get('/archives', (req, res) => {
   res.render('archives', { grouped, title: 'Archive & Timeline' });
 });
 
-// Stats & Heatmap Page
-app.get('/stats', (req, res) => {
+app.get('/stats', async (req, res) => {
   const isAuth = checkAuth(req);
-  const posts = loadPosts({ includeAll: isAuth });
+  const posts = await loadPosts({ includeAll: isAuth });
   const stats = getDiaryStats(posts);
 
   res.render('stats', { stats, title: 'Diary Analytics & Activity Heatmap' });
 });
 
-// About Page
 app.get('/about', (req, res) => {
   res.render('about', { title: 'About Me' });
 });
 
-// CV Page
 app.get('/cv', (req, res) => {
   res.render('cv', { title: 'Curriculum Vitae' });
 });
 
-// Publications Page
 app.get('/publications', (req, res) => {
   let publications = [];
   if (fs.existsSync(PUBLICATIONS_DIR)) {
@@ -565,21 +605,20 @@ app.get('/publications', (req, res) => {
   res.render('publications', { publications, title: 'Publications & Projects' });
 });
 
-// RSS Feed (Public only)
-app.get('/feed', (req, res) => {
-  const posts = loadPosts({ includeAll: false }).slice(0, 25);
+app.get('/feed', async (req, res) => {
+  const posts = (await loadPosts({ includeAll: false })).slice(0, 25);
   res.type('application/xml');
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
   xml += '<rss version="2.0"><channel>\n';
   xml += `<title>${SITE_TITLE}</title>\n`;
-  xml += `<link>http://localhost:${PORT}</link>\n`;
+  xml += `<link>https://mutedmiles.space</link>\n`;
   xml += `<description>${SITE_SUBTITLE}</description>\n`;
   
   posts.forEach(post => {
     xml += `  <item>\n`;
     xml += `    <title><![CDATA[${post.title}]]></title>\n`;
-    xml += `    <link>http://localhost:${PORT}/post/${post.slug}</link>\n`;
-    xml += `    <guid>http://localhost:${PORT}/post/${post.slug}</guid>\n`;
+    xml += `    <link>https://mutedmiles.space/post/${post.slug}</link>\n`;
+    xml += `    <guid>https://mutedmiles.space/post/${post.slug}</guid>\n`;
     xml += `    <pubDate>${post.date.toUTCString()}</pubDate>\n`;
     xml += `    <description><![CDATA[${post.excerpt}]]></description>\n`;
     xml += `  </item>\n`;
@@ -589,19 +628,18 @@ app.get('/feed', (req, res) => {
   res.send(xml);
 });
 
-// XML Sitemap
-app.get('/sitemap', (req, res) => {
-  const posts = loadPosts({ includeAll: false });
+app.get('/sitemap', async (req, res) => {
+  const posts = await loadPosts({ includeAll: false });
   res.type('application/xml');
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
   xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-  xml += `  <url><loc>http://localhost:${PORT}/</loc></url>\n`;
-  xml += `  <url><loc>http://localhost:${PORT}/archives</loc></url>\n`;
-  xml += `  <url><loc>http://localhost:${PORT}/stats</loc></url>\n`;
-  xml += `  <url><loc>http://localhost:${PORT}/about</loc></url>\n`;
+  xml += `  <url><loc>https://mutedmiles.space/</loc></url>\n`;
+  xml += `  <url><loc>https://mutedmiles.space/archives</loc></url>\n`;
+  xml += `  <url><loc>https://mutedmiles.space/stats</loc></url>\n`;
+  xml += `  <url><loc>https://mutedmiles.space/about</loc></url>\n`;
   
   posts.forEach(post => {
-    xml += `  <url><loc>http://localhost:${PORT}/post/${post.slug}</loc></url>\n`;
+    xml += `  <url><loc>https://mutedmiles.space/post/${post.slug}</loc></url>\n`;
   });
   
   xml += '</urlset>';
@@ -609,7 +647,7 @@ app.get('/sitemap', (req, res) => {
 });
 
 // ==========================================
-// AUTHENTICATION ROUTES (LOGIN / LOGOUT)
+// AUTHENTICATION ROUTES
 // ==========================================
 
 app.get('/login', (req, res) => {
@@ -632,7 +670,7 @@ app.post('/login', authLimiter, (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      maxAge: 30 * 24 * 60 * 60 * 1000
     });
     return res.redirect(nextUrl || '/admin');
   }
@@ -653,13 +691,12 @@ app.get('/logout', (req, res) => {
 // WEB WRITER / ADMIN DASHBOARD
 // ==========================================
 
-// Admin Dashboard / Markdown Writer
-app.get('/admin', requireWebAuth, (req, res) => {
-  const allPosts = loadPosts({ includeAll: true });
+app.get('/admin', requireWebAuth, async (req, res) => {
+  const allPosts = await loadPosts({ includeAll: true });
   const stats = getDiaryStats(allPosts);
   
   res.render('admin', {
-    title: 'Diary Control Center & Writer',
+    title: 'Publisher Dashboard',
     postToEdit: null,
     posts: allPosts,
     stats,
@@ -669,14 +706,12 @@ app.get('/admin', requireWebAuth, (req, res) => {
   });
 });
 
-// Alias: /write -> /admin
 app.get('/write', requireWebAuth, (req, res) => {
   res.redirect('/admin');
 });
 
-// Edit existing entry
-app.get('/admin/edit/:slug', requireWebAuth, (req, res) => {
-  const allPosts = loadPosts({ includeAll: true });
+app.get('/admin/edit/:slug', requireWebAuth, async (req, res) => {
+  const allPosts = await loadPosts({ includeAll: true });
   const postToEdit = allPosts.find(p => p.slug === req.params.slug);
   
   if (!postToEdit) {
@@ -695,8 +730,7 @@ app.get('/admin/edit/:slug', requireWebAuth, (req, res) => {
   });
 });
 
-// Save from Web Admin Form
-app.post('/admin/save', requireWebAuth, (req, res) => {
+app.post('/admin/save', requireWebAuth, async (req, res) => {
   try {
     const { 
       originalFilename, 
@@ -712,7 +746,7 @@ app.post('/admin/save', requireWebAuth, (req, res) => {
       pinned 
     } = req.body;
 
-    const result = savePostFile({
+    const result = await savePostFile({
       originalFilename,
       slug,
       title,
@@ -733,15 +767,9 @@ app.post('/admin/save', requireWebAuth, (req, res) => {
   }
 });
 
-// Delete from Web Admin Form
-app.post('/admin/delete/:slug', requireWebAuth, (req, res) => {
+app.post('/admin/delete/:slug', requireWebAuth, async (req, res) => {
   try {
-    const allPosts = loadPosts({ includeAll: true });
-    const post = allPosts.find(p => p.slug === req.params.slug);
-    if (post && fs.existsSync(path.join(POSTS_DIR, post.filename))) {
-      fs.unlinkSync(path.join(POSTS_DIR, post.filename));
-      invalidateCache();
-    }
+    await deletePostFile(req.params.slug);
     res.redirect('/admin?msg=Post%20deleted%20successfully');
   } catch (error) {
     console.error('Error deleting post:', error);
@@ -753,8 +781,7 @@ app.post('/admin/delete/:slug', requireWebAuth, (req, res) => {
 // REST API ROUTES
 // ==========================================
 
-// Create new post / diary entry via API
-app.post('/api/posts', authLimiter, upload.none(), requireApiAuth, (req, res) => {
+app.post('/api/posts', authLimiter, upload.none(), requireApiAuth, async (req, res) => {
   try {
     let { 
       title, 
@@ -769,7 +796,6 @@ app.post('/api/posts', authLimiter, upload.none(), requireApiAuth, (req, res) =>
       pinned 
     } = req.body || {};
 
-    // If sent as raw text/markdown body
     if (typeof req.body === 'string') {
       content = req.body;
       title = req.headers['x-title'] || title;
@@ -783,7 +809,7 @@ app.post('/api/posts', authLimiter, upload.none(), requireApiAuth, (req, res) =>
       return res.status(400).json({ error: 'Title or content is required.' });
     }
 
-    const result = savePostFile({
+    const result = await savePostFile({
       slug,
       title: title || 'Quick Log ' + new Date().toISOString().split('T')[0],
       content: content || '',
@@ -807,12 +833,9 @@ app.post('/api/posts', authLimiter, upload.none(), requireApiAuth, (req, res) =>
   }
 });
 
-// Update post via API
-app.put('/api/posts/:slug', authLimiter, requireApiAuth, (req, res) => {
+app.put('/api/posts/:slug', authLimiter, upload.none(), requireApiAuth, async (req, res) => {
   try {
-    const allPosts = loadPosts({ includeAll: true });
-    const existing = allPosts.find(p => p.slug === req.params.slug);
-    
+    const existing = await loadSinglePost(req.params.slug);
     if (!existing) {
       return res.status(404).json({ error: 'Post not found with provided slug' });
     }
@@ -828,9 +851,9 @@ app.put('/api/posts/:slug', authLimiter, requireApiAuth, (req, res) => {
       visibility, 
       excerpt, 
       pinned 
-    } = req.body;
+    } = req.body || {};
 
-    const result = savePostFile({
+    const result = await savePostFile({
       originalFilename: existing.filename,
       slug: newSlug || existing.slug,
       title: title !== undefined ? title : existing.title,
@@ -841,7 +864,7 @@ app.put('/api/posts/:slug', authLimiter, requireApiAuth, (req, res) => {
       mood: mood !== undefined ? mood : existing.mood,
       visibility: visibility !== undefined ? visibility : existing.visibility,
       excerpt: excerpt !== undefined ? excerpt : existing.excerpt,
-      pinned: pinned !== undefined ? pinned : existing.pinned
+      pinned: pinned !== undefined ? (pinned === 'true' || pinned === true) : existing.pinned
     });
 
     return res.json({
@@ -855,32 +878,18 @@ app.put('/api/posts/:slug', authLimiter, requireApiAuth, (req, res) => {
   }
 });
 
-// Delete post via API
-app.delete('/api/posts/:slug', authLimiter, requireApiAuth, (req, res) => {
+app.delete('/api/posts/:slug', authLimiter, requireApiAuth, async (req, res) => {
   try {
-    const allPosts = loadPosts({ includeAll: true });
-    const post = allPosts.find(p => p.slug === req.params.slug);
-    
-    if (!post) {
-      return res.status(404).json({ error: 'Post not found' });
-    }
-
-    const filePath = path.join(POSTS_DIR, post.filename);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      invalidateCache();
-    }
-
-    return res.json({ success: true, message: `Post '${post.title}' deleted successfully` });
+    await deletePostFile(req.params.slug);
+    return res.json({ success: true, message: `Post deleted successfully` });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to delete post', details: err.message });
   }
 });
 
-// List posts via API
-app.get('/api/posts', (req, res) => {
+app.get('/api/posts', async (req, res) => {
   const isAuth = checkAuth(req);
-  const posts = loadPosts({ includeAll: isAuth });
+  const posts = await loadPosts({ includeAll: isAuth });
   
   const simplified = posts.map(p => ({
     slug: p.slug,
@@ -900,7 +909,6 @@ app.get('/api/posts', (req, res) => {
   res.json({ count: simplified.length, posts: simplified });
 });
 
-// Image / File Upload API
 app.post('/api/upload', authLimiter, requireApiAuth, upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded. Use form field name "file" or "image".' });
@@ -921,15 +929,14 @@ app.post('/api/upload', authLimiter, requireApiAuth, upload.single('file'), (req
   });
 });
 
-// Live Search API
-app.get('/api/search', (req, res) => {
+app.get('/api/search', async (req, res) => {
   const query = (req.query.q || '').toLowerCase();
   if (query.length < 2) {
     return res.json([]);
   }
 
   const isAuth = checkAuth(req);
-  const posts = loadPosts({ includeAll: isAuth });
+  const posts = await loadPosts({ includeAll: isAuth });
   
   const results = posts.filter(p => 
     p.title.toLowerCase().includes(query) ||
@@ -948,20 +955,17 @@ app.get('/api/search', (req, res) => {
   res.json(results);
 });
 
-// Stats API
-app.get('/api/stats', (req, res) => {
+app.get('/api/stats', async (req, res) => {
   const isAuth = checkAuth(req);
-  const posts = loadPosts({ includeAll: isAuth });
+  const posts = await loadPosts({ includeAll: isAuth });
   const stats = getDiaryStats(posts);
   res.json(stats);
 });
 
-// 404 Handler
 app.use((req, res) => {
   res.status(404).render('404', { title: 'Page Not Found' });
 });
 
-// Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Unhandled Server Error:', err);
   if (req.path.startsWith('/api/')) {
@@ -977,7 +981,6 @@ if (!process.env.VERCEL) {
     console.log(`🚀 Diary & Blog Platform running at: http://localhost:${PORT}`);
     console.log(`✍️ Web Admin / Writer UI:           http://localhost:${PORT}/admin`);
     console.log(`🔑 Publishing API Endpoint:          POST http://localhost:${PORT}/api/posts`);
-    console.log(`📁 Loaded ${loadPosts({ includeAll: true }).length} posts from ${POSTS_DIR}`);
     console.log(`======================================================\n`);
   });
 }
