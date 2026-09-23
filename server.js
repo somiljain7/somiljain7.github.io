@@ -260,15 +260,15 @@ function calculateReadingTime(text) {
 async function loadPosts(options = { includeAll: false }) {
   await ensureDbSynced();
 
-  // Try MongoDB Atlas first
+  // When MongoDB Atlas is configured, it is the authoritative source of truth!
   if (process.env.MONGODB_URI) {
     const mongoPosts = await getMongoPosts(options);
-    if (mongoPosts && mongoPosts.length > 0) {
+    if (mongoPosts !== null) {
       return mongoPosts;
     }
   }
 
-  // Local filesystem fallback
+  // Local filesystem fallback only if MongoDB is unconfigured or unreachable
   const allFilesMap = new Map();
   if (fs.existsSync(POSTS_DIR)) {
     try {
@@ -340,8 +340,7 @@ async function loadPosts(options = { includeAll: false }) {
 // Single post lookup
 async function loadSinglePost(slug) {
   if (process.env.MONGODB_URI) {
-    const post = await getMongoPostBySlug(slug);
-    if (post) return post;
+    return await getMongoPostBySlug(slug);
   }
 
   const all = await loadPosts({ includeAll: true });
