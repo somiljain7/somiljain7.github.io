@@ -3,30 +3,19 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "views/**",
+          "_posts/**",
+          "public/**",
+          "_publications/**",
+          "images/**"
+        ]
+      }
     }
   ],
   "routes": [
-    {
-      "src": "/uploads/(.*)",
-      "dest": "/public/uploads/$1"
-    },
-    {
-      "src": "/images/(.*)",
-      "dest": "/public/images/$1"
-    },
-    {
-      "src": "/audio/(.*)",
-      "dest": "/public/audio/$1"
-    },
-    {
-      "src": "/style.css",
-      "dest": "/public/style.css"
-    },
-    {
-      "src": "/app.js",
-      "dest": "/public/app.js"
-    },
     {
       "src": "/(.*)",
       "dest": "server.js"

@@ -16,6 +16,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Resolve root directory across local and Vercel serverless environments
+const BASE_DIR = fs.existsSync(path.join(process.cwd(), 'views')) ? process.cwd() : __dirname;
+const POSTS_DIR = path.join(BASE_DIR, '_posts');
+const PUBLIC_DIR = path.join(BASE_DIR, 'public');
+const UPLOADS_DIR = path.join(PUBLIC_DIR, 'uploads');
+const PUBLICATIONS_DIR = path.join(BASE_DIR, '_publications');
+const VIEWS_DIR = path.join(BASE_DIR, 'views');
+
 // Configuration & Secrets
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'diarypassword123';
 const API_KEY = process.env.API_KEY || 'diary_secret_token_2026';
@@ -24,14 +32,14 @@ const SITE_TITLE = process.env.SITE_TITLE || '[ CODERATWORK7 ]';
 const SITE_SUBTITLE = process.env.SITE_SUBTITLE || 'ML Research Engineer & Neural Logs';
 const SITE_AUTHOR = process.env.SITE_AUTHOR || 'CODERATWORK7';
 
-// Ensure directories exist
-const POSTS_DIR = path.join(__dirname, '_posts');
-const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
-const PUBLICATIONS_DIR = path.join(__dirname, '_publications');
-
+// Ensure directories exist (wrapped in try/catch for read-only serverless runtimes)
 [POSTS_DIR, UPLOADS_DIR, PUBLICATIONS_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (e) {
+    // Ignore in read-only environments
   }
 });
 
@@ -70,9 +78,28 @@ marked.setOptions({
 
 // Middleware
 app.use(compression());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(PUBLIC_DIR));
 app.use(express.text({ type: ['text/plain', 'text/markdown'], limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Explicit static handlers to guarantee CSS/JS are always served on Vercel
+app.get('/style.css', (req, res) => {
+  const filePath = path.join(PUBLIC_DIR, 'style.css');
+  if (fs.existsSync(filePath)) {
+    res.type('text/css').sendFile(filePath);
+  } else {
+    res.type('text/css').send('/* CSS fallback */');
+  }
+});
+
+app.get('/app.js', (req, res) => {
+  const filePath = path.join(PUBLIC_DIR, 'app.js');
+  if (fs.existsSync(filePath)) {
+    res.type('application/javascript').sendFile(filePath);
+  } else {
+    res.type('application/javascript').send('/* JS fallback */');
+  }
+});
 
 // Resilient JSON parser that auto-sanitizes unescaped newlines/tabs in string literals
 app.use((req, res, next) => {
@@ -125,7 +152,7 @@ app.use((req, res, next) => {
 app.use(cookieParser(SESSION_SECRET));
 app.use(expressLayouts);
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', VIEWS_DIR);
 app.set('layout', 'layout');
 
 // Rate limiter for API and Auth routes
