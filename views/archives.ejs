@@ -1,21 +1,46 @@
 <div class="archives-page">
-  <h1>Archives</h1>
+  <div class="page-header">
+    <h1 class="page-title">Journal Timeline & Archives</h1>
+    <p class="page-subtitle">Chronological archive of all diary entries and engineering notes.</p>
+  </div>
   
   <% Object.keys(grouped).sort((a, b) => b - a).forEach(year => { %>
-    <section class="year-section">
-      <h2 class="year-header"><%= year %></h2>
-      <ul class="posts-by-year">
-        <% grouped[year].forEach(post => { %>
-          <li>
-            <time class="archive-date"><%= post.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></time>
-            <a href="/post/<%= post.slug %>"><%= post.title %></a>
-          </li>
-        <% }); %>
-      </ul>
+    <section class="year-section card-box">
+      <div class="year-header-row">
+        <h2 class="year-header"><%= year %></h2>
+        <span class="year-count-badge">
+          <%= Object.values(grouped[year]).reduce((acc, curr) => acc + curr.length, 0) %> entries
+        </span>
+      </div>
+
+      <% Object.keys(grouped[year]).forEach(month => { %>
+        <div class="month-group">
+          <h3 class="month-title"><%= month %></h3>
+          <ul class="posts-by-year">
+            <% grouped[year][month].forEach(post => { %>
+              <li class="archive-item">
+                <time class="archive-date"><%= post.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></time>
+                <div class="archive-content">
+                  <a href="/post/<%= post.slug %>" class="archive-link"><%= post.title %></a>
+                  <div class="archive-meta">
+                    <% if (post.mood) { %>
+                      <span class="mood-badge-mini"><%= post.mood %></span>
+                    <% } %>
+                    <% if (post.visibility && post.visibility !== 'public') { %>
+                      <span class="visibility-pill-mini <%= post.visibility %>"><%= post.visibility %></span>
+                    <% } %>
+                    <span class="archive-words"><%= post.wordCount %> words</span>
+                  </div>
+                </div>
+              </li>
+            <% }); %>
+          </ul>
+        </div>
+      <% }); %>
     </section>
   <% }); %>
 
   <nav class="back-nav">
-    <a href="/" class="back-link">← Back to posts</a>
+    <a href="/" class="back-link">← Back to Blog</a>
   </nav>
 </div>

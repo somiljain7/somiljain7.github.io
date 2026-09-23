@@ -18,7 +18,7 @@ That's a mild annoyance in a text chatbot, where a typo just sits there until so
 
 ## One word goes sideways, the whole action follows
 
-Say someone calls a bank's voice line to move money. He says his name is Somil and to send five thousand rupees. Speech-to-text mishears Somil as "So, Mil," splitting it into two syllables that sound like nothing in particular. Or it hears the amount as fifty thousand instead of five thousand. Or the customer says "don't send it yet" and the "don't" gets clipped and disappears entirely. Any one of these is a single wrong word buried in an otherwise clean transcript.
+Say someone calls a bank's voice line to move money. He says his name is Alex and to send five thousand rupees. Speech-to-text mishears Alex as "Ah, Lex," splitting it into two syllables that sound like nothing in particular. Or it hears the amount as fifty thousand instead of five thousand. Or the customer says "don't send it yet" and the "don't" gets clipped and disappears entirely. Any one of these is a single wrong word buried in an otherwise clean transcript.
 
 A typical cascading setup just barrels ahead with whatever transcript it got. The language model reads the sentence, doesn't flag anything as unusual, and either proceeds with the wrong amount, sends money nobody asked to send, guesses the closest name in the system, or can't match the account and falls back to a generic "can you repeat that?" without knowing whether the real problem is the name, the amount, or something else entirely. It's making a decision, but it's making it blind, because nothing in the pipeline actually measured how sure anyone should be about any single piece of that sentence before acting on it.
 
@@ -48,7 +48,7 @@ If you've worked with Whisper, the shape of this isn't new. Whisper's language d
 
 Back to the call. Here's how I picture this playing out, purely as an idea, not something I've run myself. Instead of sending the shaky transcript to one model and hoping it both figures out the intent and honestly reports how unsure it is, you'd hand that transcript to Jev once as shared context, then ask a handful of small, independent questions about the specific risky pieces:
 
-- **Name match** (Noul): the bank already knows which account this call is for, from the caller's number or the session. So the question is simply: is the name the caller just said the same person as the account holder on file, "Somil Jain"? A yes/no with a probability.
+- **Name match** (Noul): the bank already knows which account this call is for, from the caller's number or the session. So the question is simply: is the name the caller just said the same person as the account holder on file, "Alex Miller"? A yes/no with a probability.
 - **Amount** (Noul): is the amount unambiguous, or could a digit have been misheard?
 - **Negation** (Noul): does the sentence contain a negation, like "don't," that might have been clipped?
 - **Handoff** (Noul or Score): should this call go to a human instead of continuing automatically?

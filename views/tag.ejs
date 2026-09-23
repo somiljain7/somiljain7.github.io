@@ -1,23 +1,46 @@
 <div class="tag-page">
-  <h1>Tag: #<%= tag %></h1>
-  <p class="count"><%= count %> post<%= count !== 1 ? 's' : '' %> found</p>
+  <div class="page-header">
+    <h1 class="page-title">Tag: <span class="accent-text">#<%= tag %></span></h1>
+    <p class="page-subtitle"><%= count %> <%= count === 1 ? 'entry' : 'entries' %> tagged with #<%= tag %></p>
+  </div>
 
   <div class="posts-list">
     <% posts.forEach(post => { %>
       <article class="post-preview">
+        <div class="post-meta-top">
+          <time datetime="<%= post.date.toISOString() %>">
+            <%= post.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) %>
+          </time>
+          <span class="read-time"><%= post.readingTime %> min read</span>
+          <% if (post.mood) { %>
+            <span class="mood-badge"><%= post.mood %></span>
+          <% } %>
+          <% if (post.visibility && post.visibility !== 'public') { %>
+            <span class="visibility-badge <%= post.visibility %>"><%= post.visibility %></span>
+          <% } %>
+        </div>
+
         <h2 class="post-title">
           <a href="/post/<%= post.slug %>"><%= post.title %></a>
         </h2>
-        <div class="post-meta">
-          <time><%= post.date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></time>
-        </div>
+
         <p class="post-excerpt"><%= post.excerpt %></p>
-        <a href="/post/<%= post.slug %>" class="read-more">Read more →</a>
+
+        <div class="post-footer-meta">
+          <% if (post.categories && post.categories.length > 0) { %>
+            <span class="categories">
+              <% post.categories.forEach(cat => { %>
+                <a href="/category/<%= cat %>" class="category-tag"><%= cat %></a>
+              <% }); %>
+            </span>
+          <% } %>
+          <a href="/post/<%= post.slug %>" class="read-more">Read more →</a>
+        </div>
       </article>
     <% }); %>
   </div>
 
   <nav class="back-nav">
-    <a href="/" class="back-link">← Back to all posts</a>
+    <a href="/" class="back-link">← Back to Blog</a>
   </nav>
 </div>

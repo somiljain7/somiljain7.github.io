@@ -1,0 +1,506 @@
+<div class="admin-wrapper">
+  <div class="admin-header">
+    <div class="admin-title-area">
+      <h1>Publisher Dashboard</h1>
+      <span class="admin-badge">Authenticated</span>
+    </div>
+    
+    <div class="admin-nav-tabs">
+      <button type="button" class="tab-btn active" data-tab="writer-tab"><%= postToEdit ? 'Edit Post' : 'New Post' %></button>
+      <button type="button" class="tab-btn" data-tab="entries-tab">Manage Posts (<%= posts.length %>)</button>
+      <button type="button" class="tab-btn" data-tab="api-tab">API Reference</button>
+    </div>
+  </div>
+
+  <% if (typeof message !== 'undefined' && message) { %>
+    <div class="alert alert-info">
+      <span><%= message %></span>
+    </div>
+  <% } %>
+
+  <!-- TAB 1: MARKDOWN WRITER -->
+  <section id="writer-tab" class="admin-tab-pane active">
+    <form action="/admin/save" method="POST" id="post-form" class="editor-form">
+      <% if (postToEdit) { %>
+        <input type="hidden" name="originalFilename" value="<%= postToEdit.filename %>">
+      <% } %>
+
+      <div class="editor-meta-grid">
+        <div class="form-group form-group-title">
+          <label for="title" class="form-label">Title <span class="required">*</span></label>
+          <input 
+            type="text" 
+            id="title" 
+            name="title" 
+            class="form-control form-control-lg" 
+            placeholder="e.g. Scaling Audio Inference Pipeline" 
+            value="<%= postToEdit ? postToEdit.title : '' %>" 
+            required 
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="slug" class="form-label">Slug</label>
+          <input 
+            type="text" 
+            id="slug" 
+            name="slug" 
+            class="form-control" 
+            placeholder="auto-generated-from-title" 
+            value="<%= postToEdit ? postToEdit.slug : '' %>" 
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="date" class="form-label">Date</label>
+          <input 
+            type="date" 
+            id="date" 
+            name="date" 
+            class="form-control" 
+            value="<%= postToEdit ? postToEdit.date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0] %>" 
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="category" class="form-label">Category</label>
+          <input 
+            type="text" 
+            id="category" 
+            name="categories" 
+            class="form-control" 
+            placeholder="Engineering, Research, Diary..." 
+            value="<%= postToEdit ? postToEdit.categories.join(', ') : 'Engineering' %>" 
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="tags" class="form-label">Tags (comma separated)</label>
+          <input 
+            type="text" 
+            id="tags" 
+            name="tags" 
+            class="form-control" 
+            placeholder="ml, speech, systems, audio" 
+            value="<%= postToEdit ? postToEdit.tags.join(', ') : '' %>" 
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="mood" class="form-label">Status / Topic Tag</label>
+          <div class="mood-input-group">
+            <input 
+              type="text" 
+              id="mood" 
+              name="mood" 
+              class="form-control" 
+              placeholder="Productive, Research, Deep Work..." 
+              value="<%= postToEdit ? (postToEdit.mood || '') : '' %>" 
+            />
+            <div class="quick-mood-pills">
+              <button type="button" class="mood-pill" onclick="setMood('Productive')">Productive</button>
+              <button type="button" class="mood-pill" onclick="setMood('Research')">Research</button>
+              <button type="button" class="mood-pill" onclick="setMood('Deep Work')">Deep Work</button>
+              <button type="button" class="mood-pill" onclick="setMood('Release')">Release</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="visibility" class="form-label">Visibility</label>
+          <select id="visibility" name="visibility" class="form-control">
+            <option value="public" <%= (!postToEdit || postToEdit.visibility === 'public') ? 'selected' : '' %>>Public</option>
+            <option value="private" <%= (postToEdit && postToEdit.visibility === 'private') ? 'selected' : '' %>>Private (Auth only)</option>
+            <option value="unlisted" <%= (postToEdit && postToEdit.visibility === 'unlisted') ? 'selected' : '' %>>Unlisted (Direct link)</option>
+          </select>
+        </div>
+
+        <div class="form-group form-group-checkbox">
+          <label class="checkbox-label">
+            <input type="checkbox" name="pinned" <%= (postToEdit && postToEdit.pinned) ? 'checked' : '' %> />
+            <span>Pin entry to top</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Markdown Toolbar -->
+      <div class="editor-toolbar">
+        <div class="toolbar-group">
+          <button type="button" class="tool-btn" onclick="insertFormat('**', '**')" title="Bold"><b>B</b></button>
+          <button type="button" class="tool-btn" onclick="insertFormat('*', '*')" title="Italic"><i>I</i></button>
+          <button type="button" class="tool-btn" onclick="insertFormat('## ', '')" title="Heading 2">H2</button>
+          <button type="button" class="tool-btn" onclick="insertFormat('### ', '')" title="Heading 3">H3</button>
+          <button type="button" class="tool-btn" onclick="insertFormat('> ', '')" title="Blockquote">Quote</button>
+          <button type="button" class="tool-btn" onclick="insertFormat('```javascript\n', '\n```')" title="Code Block">&lt;/&gt;</button>
+          <button type="button" class="tool-btn" onclick="insertFormat('[', '](https://)')" title="Link">Link</button>
+        </div>
+
+        <div class="toolbar-group toolbar-upload">
+          <label for="img-upload-input" class="tool-btn tool-btn-upload" title="Upload Image">
+            Upload Image
+            <input type="file" id="img-upload-input" accept="image/*,.pdf,.mp3" style="display:none;" onchange="handleImageUpload(this)">
+          </label>
+          <span id="upload-status" class="upload-status-text"></span>
+        </div>
+
+        <div class="toolbar-group editor-stats-counter">
+          <span id="word-counter">0 words</span>
+          <span class="dot-sep">•</span>
+          <span id="reading-counter">1 min read</span>
+        </div>
+      </div>
+
+      <!-- Split Pane Editor -->
+      <div class="split-editor">
+        <div class="editor-pane">
+          <div class="pane-header">
+            <span>Markdown Source</span>
+            <small>Drag & drop or paste images</small>
+          </div>
+          <textarea 
+            id="editor-content" 
+            name="content" 
+            class="editor-textarea" 
+            placeholder="# Today's Notes&#10;&#10;Write Markdown here..." 
+            rows="22" 
+            required
+          ><%= postToEdit ? postToEdit.rawContent : '' %></textarea>
+        </div>
+
+        <div class="preview-pane">
+          <div class="pane-header">
+            <span>Preview</span>
+          </div>
+          <div id="editor-preview" class="editor-preview-body markdown-body"></div>
+        </div>
+      </div>
+
+      <div class="editor-actions">
+        <button type="submit" class="btn btn-primary btn-lg">
+          <%= postToEdit ? 'Update Post' : 'Publish Post' %>
+        </button>
+        <% if (postToEdit) { %>
+          <a href="/post/<%= postToEdit.slug %>" class="btn btn-outline" target="_blank">View Live</a>
+          <a href="/admin" class="btn btn-outline">Cancel</a>
+        <% } %>
+      </div>
+    </form>
+  </section>
+
+  <!-- TAB 2: MANAGE ENTRIES -->
+  <section id="entries-tab" class="admin-tab-pane">
+    <div class="entries-table-header">
+      <h2>All Posts (<%= posts.length %>)</h2>
+      <input type="text" id="entries-filter" placeholder="Filter by title, tag..." class="search-input" style="max-width: 320px;" oninput="filterEntriesTable(this.value)">
+    </div>
+
+    <div class="table-responsive">
+      <table class="admin-table" id="entries-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Title</th>
+            <th>Category & Tags</th>
+            <th>Status</th>
+            <th>Visibility</th>
+            <th>Words</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% posts.forEach(p => { %>
+            <tr class="entry-row" data-search="<%= (p.title + ' ' + p.tags.join(' ') + ' ' + (p.mood || '') + ' ' + p.categories.join(' ')).toLowerCase() %>">
+              <td class="cell-date"><%= p.date.toISOString().split('T')[0] %></td>
+              <td class="cell-title">
+                <a href="/post/<%= p.slug %>" target="_blank" class="entry-title-link">
+                  <%= p.pinned ? '[Pinned] ' : '' %><%= p.title %>
+                </a>
+              </td>
+              <td class="cell-meta">
+                <span class="category-pill"><%= p.categories.join(', ') %></span>
+                <% if (p.tags.length > 0) { %>
+                  <small class="tag-list"><%= p.tags.map(t => '#' + t).join(' ') %></small>
+                <% } %>
+              </td>
+              <td><%= p.mood || '—' %></td>
+              <td>
+                <span class="visibility-pill <%= p.visibility %>">
+                  <%= p.visibility %>
+                </span>
+              </td>
+              <td><%= p.wordCount %></td>
+              <td class="cell-actions">
+                <a href="/admin/edit/<%= p.slug %>" class="btn btn-xs btn-outline">Edit</a>
+                <form action="/admin/delete/<%= p.slug %>" method="POST" style="display:inline;" onsubmit="return confirm('Delete \'<%= p.title %>\'?');">
+                  <button type="submit" class="btn btn-xs btn-danger">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- TAB 3: API & SHORTCUTS GUIDE -->
+  <section id="api-tab" class="admin-tab-pane">
+    <div class="api-docs-container">
+      <h2>Publishing REST API & Automation Guide</h2>
+      <p class="lead-text">You can push new diary entries directly from your terminal, phone, scripts, or Obsidian using this API.</p>
+
+      <div class="api-token-card">
+        <label class="form-label">Your Secret API Key / Bearer Token:</label>
+        <div class="token-display-box">
+          <input type="password" id="api-key-input" value="<%= apiKey %>" readonly class="form-control">
+          <button type="button" class="btn btn-outline btn-sm" onclick="toggleApiKeyVisibility()">Show</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="copyApiKey()">Copy Token</button>
+        </div>
+      </div>
+
+      <div class="api-examples-grid">
+        <div class="api-example-card">
+          <div class="example-header">
+            <h3>1. Terminal / cURL Publishing</h3>
+            <button class="btn btn-xs btn-outline" onclick="copySnippet('curl-snippet')">Copy</button>
+          </div>
+          <pre><code id="curl-snippet">curl -X POST http://localhost:<%= port %>/api/posts \
+  -H "Authorization: Bearer <%= apiKey %>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Evening Stream Reflection",
+    "content": "Worked on voice diarization and latency reduction today...",
+    "category": "Journal",
+    "tags": ["ml", "speech", "daily"],
+    "mood": "⚡ Productive",
+    "visibility": "public"
+  }'</code></pre>
+        </div>
+
+        <div class="api-example-card">
+          <div class="example-header">
+            <h3>2. Zsh / Bash Shell Alias</h3>
+            <button class="btn btn-xs btn-outline" onclick="copySnippet('bash-snippet')">Copy</button>
+          </div>
+          <pre><code id="bash-snippet"># Add this function to your ~/.zshrc or ~/.bashrc:
+diary() {
+  local title="$1"
+  local content="$2"
+  local mood="${3:-⚡ Productive}"
+  curl -s -X POST http://localhost:<%= port %>/api/posts \
+    -H "Authorization: Bearer <%= apiKey %>" \
+    -H "Content-Type: application/json" \
+    -d "{\"title\":\"$title\",\"content\":\"$content\",\"mood\":\"$mood\"}" | grep -o '"url":"[^"]*"'
+}
+
+# Usage in terminal:
+# diary "Daily Log" "Finished building the model pipeline today."</code></pre>
+        </div>
+
+        <div class="api-example-card">
+          <div class="example-header">
+            <h3>3. Python Script Publishing</h3>
+            <button class="btn btn-xs btn-outline" onclick="copySnippet('py-snippet')">Copy</button>
+          </div>
+          <pre><code id="py-snippet">import requests
+
+API_URL = "http://localhost:<%= port %>/api/posts"
+API_KEY = "<%= apiKey %>"
+
+data = {
+    "title": "Daily ML Log",
+    "content": "## Today's breakthroughs\n- Tested new STT checkpoints\n- 120ms latency reached!",
+    "category": "Engineering",
+    "tags": ["ml", "audio", "notes"],
+    "mood": "🚀 Shipped",
+    "visibility": "public"
+}
+
+resp = requests.post(API_URL, json=data, headers={"Authorization": f"Bearer {API_KEY}"})
+print(resp.json())</code></pre>
+        </div>
+
+        <div class="api-example-card">
+          <div class="example-header">
+            <h3>4. Image Upload via API</h3>
+            <button class="btn btn-xs btn-outline" onclick="copySnippet('upload-snippet')">Copy</button>
+          </div>
+          <pre><code id="upload-snippet">curl -X POST http://localhost:<%= port %>/api/upload \
+  -H "Authorization: Bearer <%= apiKey %>" \
+  -F "file=@/path/to/my_screenshot.png"</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Marked.js library for client side live preview -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+  // Tabs switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.admin-tab-pane').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      const target = document.getElementById(btn.dataset.tab);
+      if (target) target.classList.add('active');
+    });
+  });
+
+  // Check URL hash for tab activation
+  if (window.location.hash === '#api') {
+    const apiBtn = document.querySelector('[data-tab="api-tab"]');
+    if (apiBtn) apiBtn.click();
+  }
+
+  // Live Markdown Preview
+  const editor = document.getElementById('editor-content');
+  const preview = document.getElementById('editor-preview');
+  const wordCounter = document.getElementById('word-counter');
+  const readingCounter = document.getElementById('reading-counter');
+  const titleInput = document.getElementById('title');
+  const slugInput = document.getElementById('slug');
+
+  function updatePreview() {
+    if (!editor || !preview) return;
+    const text = editor.value;
+    preview.innerHTML = marked.parse(text);
+    
+    // Calculate words
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    wordCounter.textContent = `${words} words`;
+    readingCounter.textContent = `${Math.max(1, Math.ceil(words / 200))} min read`;
+  }
+
+  if (editor) {
+    editor.addEventListener('input', updatePreview);
+    updatePreview();
+  }
+
+  // Auto slug generation
+  if (titleInput && slugInput && !slugInput.value) {
+    titleInput.addEventListener('input', () => {
+      slugInput.value = titleInput.value
+        .toLowerCase()
+        .trim()
+        .replace(/[\s\W-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    });
+  }
+
+  // Mood selector helper
+  function setMood(m) {
+    const moodInput = document.getElementById('mood');
+    if (moodInput) moodInput.value = m;
+  }
+
+  // Insert markdown helper
+  function insertFormat(before, after) {
+    if (!editor) return;
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const val = editor.value;
+    const selected = val.substring(start, end);
+    const replacement = before + selected + after;
+    editor.value = val.substring(0, start) + replacement + val.substring(end);
+    editor.focus();
+    editor.selectionStart = start + before.length;
+    editor.selectionEnd = end + before.length;
+    updatePreview();
+  }
+
+  function insertTimestamp() {
+    const now = new Date();
+    const timeStr = `\n**[${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]** `;
+    insertFormat(timeStr, '');
+  }
+
+  // Image upload handling
+  async function handleImageUpload(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const status = document.getElementById('upload-status');
+    status.textContent = 'Uploading...';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        status.textContent = 'Uploaded!';
+        insertFormat(`\n${data.markdown}\n`, '');
+        setTimeout(() => { status.textContent = ''; }, 3000);
+      } else {
+        status.textContent = 'Upload failed: ' + (data.error || 'unknown');
+      }
+    } catch (err) {
+      status.textContent = 'Error uploading image';
+    }
+  }
+
+  // Paste image directly into editor
+  if (editor) {
+    editor.addEventListener('paste', async (e) => {
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+      for (const item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          const status = document.getElementById('upload-status');
+          status.textContent = 'Uploading pasted image...';
+
+          const formData = new FormData();
+          formData.append('file', file);
+
+          try {
+            const res = await fetch('/api/upload', {
+              method: 'POST',
+              body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+              status.textContent = 'Pasted image uploaded!';
+              insertFormat(`\n${data.markdown}\n`, '');
+              setTimeout(() => { status.textContent = ''; }, 3000);
+            }
+          } catch (err) {
+            status.textContent = 'Error uploading pasted image';
+          }
+        }
+      }
+    });
+  }
+
+  // Entries table filter
+  function filterEntriesTable(query) {
+    const q = query.toLowerCase().trim();
+    document.querySelectorAll('.entry-row').forEach(row => {
+      const search = row.dataset.search || '';
+      row.style.display = search.includes(q) ? '' : 'none';
+    });
+  }
+
+  // API Key toggle and copy
+  function toggleApiKeyVisibility() {
+    const input = document.getElementById('api-key-input');
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  function copyApiKey() {
+    const input = document.getElementById('api-key-input');
+    navigator.clipboard.writeText(input.value);
+    alert('API Key copied to clipboard!');
+  }
+
+  function copySnippet(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      navigator.clipboard.writeText(el.textContent);
+      alert('Code snippet copied to clipboard!');
+    }
+  }
+</script>

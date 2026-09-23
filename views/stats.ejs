@@ -1,0 +1,150 @@
+<div class="stats-page-container">
+  <div class="page-header">
+    <h1 class="page-title">Diary Analytics & Writing Heatmap</h1>
+    <p class="page-subtitle">Writing consistency, word metrics, and mood trends.</p>
+  </div>
+
+  <!-- Big Metrics Overview -->
+  <div class="diary-metrics-banner stats-overview-grid">
+    <div class="metric-card">
+      <span class="metric-icon">🔥</span>
+      <div class="metric-info">
+        <span class="metric-value"><%= stats.streak %> <small>days</small></span>
+        <span class="metric-label">Current Streak</span>
+      </div>
+    </div>
+    <div class="metric-card">
+      <span class="metric-icon">📝</span>
+      <div class="metric-info">
+        <span class="metric-value"><%= stats.totalPosts %></span>
+        <span class="metric-label">Total Entries</span>
+      </div>
+    </div>
+    <div class="metric-card">
+      <span class="metric-icon">📖</span>
+      <div class="metric-info">
+        <span class="metric-value"><%= stats.totalWords.toLocaleString() %></span>
+        <span class="metric-label">Total Words Written</span>
+      </div>
+    </div>
+    <div class="metric-card">
+      <span class="metric-icon">⚡</span>
+      <div class="metric-info">
+        <span class="metric-value">
+          <%= stats.totalPosts > 0 ? Math.round(stats.totalWords / stats.totalPosts).toLocaleString() : 0 %>
+        </span>
+        <span class="metric-label">Avg Words / Entry</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Annual Contribution Heatmap -->
+  <section class="heatmap-section card-box">
+    <div class="heatmap-header">
+      <h3>Activity Heatmap (<%= new Date().getFullYear() %>)</h3>
+      <span class="heatmap-legend">
+        Less 
+        <span class="heat-box lvl-0"></span>
+        <span class="heat-box lvl-1"></span>
+        <span class="heat-box lvl-2"></span>
+        <span class="heat-box lvl-3"></span>
+        <span class="heat-box lvl-4"></span>
+        More
+      </span>
+    </div>
+    
+    <div class="heatmap-scroll-wrapper">
+      <div class="heatmap-grid" id="heatmap-grid">
+        <!-- Generated via JavaScript with date counts -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Mood & Category Analytics Grid -->
+  <div class="stats-analytics-split">
+    <!-- Mood Tracker -->
+    <div class="analytics-card card-box">
+      <h3>Mood Distribution</h3>
+      <% if (Object.keys(stats.moodCounts).length === 0) { %>
+        <p class="empty-text">No moods recorded yet. Add mood tags in the writer or via API.</p>
+      <% } else { %>
+        <div class="mood-list">
+          <% Object.entries(stats.moodCounts).sort((a, b) => b[1] - a[1]).forEach(([mood, count]) => { %>
+            <div class="mood-stat-row">
+              <span class="mood-name"><%= mood %></span>
+              <div class="stat-bar-container">
+                <div class="stat-bar-fill" style="width: <%= Math.min(100, Math.round((count / stats.totalPosts) * 100)) %>%;"></div>
+              </div>
+              <span class="stat-count"><%= count %> entries</span>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Category Distribution -->
+    <div class="analytics-card card-box">
+      <h3>Categories & Themes</h3>
+      <% if (Object.keys(stats.categoryCounts).length === 0) { %>
+        <p class="empty-text">No categories yet.</p>
+      <% } else { %>
+        <div class="category-stat-list">
+          <% Object.entries(stats.categoryCounts).sort((a, b) => b[1] - a[1]).forEach(([cat, count]) => { %>
+            <div class="category-stat-row">
+              <a href="/category/<%= cat %>" class="category-link"><%= cat %></a>
+              <span class="cat-count-badge"><%= count %></span>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Tag Cloud -->
+  <section class="card-box tag-cloud-section">
+    <h3>All Journal Tags</h3>
+    <div class="tag-cloud-pills">
+      <% Object.entries(stats.tagCounts).sort((a, b) => b[1] - a[1]).forEach(([tag, count]) => { %>
+        <a href="/tag/<%= tag %>" class="tag-cloud-item">
+          #<%= tag %> <span class="tag-freq">(<%= count %>)</span>
+        </a>
+      <% }); %>
+    </div>
+  </section>
+</div>
+
+<script>
+  // Build 52-week activity heatmap
+  (function() {
+    const dateCounts = <%- JSON.stringify(stats.dateCounts) %>;
+    const grid = document.getElementById('heatmap-grid');
+    if (!grid) return;
+
+    const today = new Date();
+    const daysToShow = 364; // ~52 weeks
+    const startDate = new Date();
+    startDate.setDate(today.getDate() - daysToShow);
+
+    let html = '';
+    let curr = new Date(startDate);
+
+    while (curr <= today) {
+      const dStr = curr.toISOString().split('T')[0];
+      const count = dateCounts[dStr] || 0;
+      
+      let lvl = 0;
+      if (count === 1) lvl = 1;
+      else if (count === 2) lvl = 2;
+      else if (count >= 3 && count < 5) lvl = 3;
+      else if (count >= 5) lvl = 4;
+
+      const dateReadable = curr.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const tooltip = `${count} entries on ${dateReadable}`;
+
+      html += `<div class="heat-cell lvl-${lvl}" title="${tooltip}" data-date="${dStr}"></div>`;
+      curr.setDate(curr.getDate() + 1);
+    }
+
+    grid.innerHTML = html;
+  })();
+</script>

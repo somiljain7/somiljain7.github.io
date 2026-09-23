@@ -1,36 +1,68 @@
 <article class="post-single">
   <header class="post-header">
-    <h1 class="post-title"><%= post.title %></h1>
     <div class="post-meta">
       <time datetime="<%= post.date.toISOString() %>">
         <%= post.date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
       </time>
-      <% if (post.categories.length > 0) { %>
+      <span class="read-time"><%= post.readingTime %> min read (<%= post.wordCount %> words)</span>
+      
+      <% if (post.mood) { %>
+        <span class="mood-badge"><%= post.mood %></span>
+      <% } %>
+
+      <% if (post.visibility && post.visibility !== 'public') { %>
+        <span class="visibility-badge <%= post.visibility %>">
+          <%= post.visibility %>
+        </span>
+      <% } %>
+
+      <% if (post.pinned) { %>
+        <span class="pin-badge">Pinned</span>
+      <% } %>
+    </div>
+
+    <h1 class="post-title"><%= post.title %></h1>
+
+    <div class="post-meta-sub">
+      <% if (post.categories && post.categories.length > 0) { %>
         <span class="categories">
+          Category: 
           <% post.categories.forEach(cat => { %>
             <a href="/category/<%= cat %>" class="category-tag"><%= cat %></a>
           <% }); %>
         </span>
       <% } %>
+
+      <% if (isAuthenticated) { %>
+        <div class="post-admin-actions">
+          <a href="/admin/edit/<%= post.slug %>" class="btn btn-sm btn-outline">Edit</a>
+          <form action="/admin/delete/<%= post.slug %>" method="POST" style="display:inline;" onsubmit="return confirm('Delete this entry?');">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </div>
+      <% } %>
     </div>
   </header>
 
-  <div class="post-content">
+  <div class="post-content markdown-body">
     <%- post.content %>
   </div>
 
-  <% if (post.tags.length > 0) { %>
-    <footer class="post-tags">
-      <% post.tags.forEach(tag => { %>
-        <a href="/tag/<%= tag %>" class="tag">#<%= tag %></a>
-      <% }); %>
+  <% if (post.tags && post.tags.length > 0) { %>
+    <footer class="post-tags-footer">
+      <span class="tags-label">Tags:</span>
+      <div class="tags">
+        <% post.tags.forEach(tag => { %>
+          <a href="/tag/<%= tag %>" class="tag">#<%= tag %></a>
+        <% }); %>
+      </div>
     </footer>
   <% } %>
 </article>
 
-<% if (related.length > 0) { %>
+<% if (related && related.length > 0) { %>
   <section class="related-posts">
-    <h3>Related Posts</h3>
+    <h3 class="section-subheading">Related Posts</h3>
     <div class="related-grid">
       <% related.forEach(p => { %>
         <div class="related-item">
@@ -43,5 +75,6 @@
 <% } %>
 
 <nav class="post-nav">
-  <a href="/" class="back-link">← Back to posts</a>
+  <a href="/" class="back-link">← Back to Blog</a>
+  <a href="/archives" class="back-link">Archive →</a>
 </nav>

@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= typeof title !== 'undefined' ? title + ' - ' : '' %>CODERATWORK7</title>
+  <title><%= typeof title !== 'undefined' && title ? title + ' - ' : '' %><%= siteTitle %></title>
   <link rel="stylesheet" href="/style.css">
-  <link rel="alternate" type="application/rss+xml" href="/feed">
+  <link rel="alternate" type="application/rss+xml" title="<%= siteTitle %> Feed" href="/feed">
   <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
-  <div id="dark-mode-toggle" class="dark-mode-toggle" title="Toggle Dark Mode">🌙</div>
-  <button id="music-toggle" class="music-toggle" title="Play background music" aria-pressed="false">
+<body class="dark-mode">
+  <div id="dark-mode-toggle" class="dark-mode-toggle" title="Toggle Dark/Light Mode">🌙</div>
+  <button id="music-toggle" class="music-toggle" title="Play background ambient music" aria-pressed="false">
     <span class="music-icon" aria-hidden="true">🎧</span>
   </button>
   <audio id="bg-audio" src="/audio/ambient.mp3" loop preload="none"></audio>
@@ -21,10 +23,10 @@
       <div class="container">
         <div class="nav-brand">
           <h1 class="site-title">
-            <a href="/">[ CODERATWORK7 ]</a>
+            <a href="/"><%= siteTitle %></a>
             <span class="eq-bars" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></span>
           </h1>
-          <span class="site-subtitle">ML Research Engineer</span>
+          <span class="site-subtitle"><%= siteSubtitle %></span>
         </div>
         
         <div class="nav-center">
@@ -36,11 +38,15 @@
         </button>
 
         <ul id="nav-links" class="nav-links">
-          <li><a href="/" class="nav-link">Blog</a></li>
-          <li><a href="/about" class="nav-link">About</a></li>
-          <li><a href="/cv" class="nav-link">CV</a></li>
-          <li><a href="/publications" class="nav-link">Publications</a></li>
-          <li><a href="/archives" class="nav-link">Archive</a></li>
+          <li><a href="/" class="nav-link <%= currentPath === '/' ? 'active' : '' %>">Blog</a></li>
+          <li><a href="/about" class="nav-link <%= currentPath === '/about' ? 'active' : '' %>">About</a></li>
+          <li><a href="/cv" class="nav-link <%= currentPath === '/cv' ? 'active' : '' %>">CV</a></li>
+          <li><a href="/publications" class="nav-link <%= currentPath === '/publications' ? 'active' : '' %>">Publications</a></li>
+          <li><a href="/archives" class="nav-link <%= currentPath === '/archives' ? 'active' : '' %>">Archive</a></li>
+          <% if (isAuthenticated) { %>
+            <li><a href="/admin" class="nav-link nav-btn-admin <%= currentPath.startsWith('/admin') ? 'active' : '' %>">Writer</a></li>
+            <li><a href="/logout" class="nav-link nav-btn-logout" title="Logout">Logout</a></li>
+          <% } %>
         </ul>
       </div>
     </nav>
@@ -48,15 +54,16 @@
 
   <div id="search-results" class="search-results hidden"></div>
 
-  <main class="container">
+  <main class="container main-content">
     <%- body %>
   </main>
 
   <footer class="footer">
-    <div class="footer-content">
+    <div class="footer-content container">
       <div class="footer-section">
-        <h3>CODERATWORK7</h3>
-        <p>ML Research Engineer passionate about speech processing, document intelligence, and conversational AI.</p>
+        <h3><%= siteTitle %></h3>
+        <p><%= siteSubtitle %></p>
+        <p class="footer-meta">ML Research Engineer passionate about speech processing, document intelligence, and conversational AI.</p>
       </div>
       <div class="footer-section">
         <h4>Quick Links</h4>
@@ -65,19 +72,20 @@
           <li><a href="/about">About</a></li>
           <li><a href="/cv">CV</a></li>
           <li><a href="/publications">Publications</a></li>
+          <li><a href="/archives">Archive</a></li>
         </ul>
       </div>
       <div class="footer-section">
         <h4>Connect</h4>
         <ul>
-          <li><a href="https://github.com/somiljain7" target="_blank">GitHub</a></li>
-          <li><a href="https://x.com/coderatwork7" target="_blank">Twitter/X</a></li>
-          <li><a href="https://www.linkedin.com/in/somiljain7/" target="_blank">LinkedIn</a></li>
+          <li><a href="https://github.com/coderatwork7" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://x.com/coderatwork7" target="_blank" rel="noopener">Twitter / X</a></li>
+          <li><a href="https://linkedin.com" target="_blank" rel="noopener">LinkedIn</a></li>
         </ul>
       </div>
     </div>
     <div class="footer-bottom">
-      <p>&copy; 2026 Somil Jain • Built with Node.js & ❤️</p>
+      <p>&copy; <%= new Date().getFullYear() %> <%= siteAuthor %> • Built with Node.js & Markdown</p>
     </div>
   </footer>
 

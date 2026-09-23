@@ -3,11 +3,11 @@
     <span class="hero-dot"></span>
     <span class="hero-dot"></span>
     <span class="hero-dot"></span>
-    <span class="hero-path">~/somiljain7 — zsh</span>
+    <span class="hero-path">~/coderatwork7 — zsh</span>
   </div>
   <div class="hero-body">
     <div class="hero-line"><span class="prompt">$</span>whoami</div>
-    <div class="hero-name">Somil Jain</div>
+    <div class="hero-name"><%= siteAuthor %></div>
     <div class="hero-typed" id="hero-typed"></div>
     <canvas class="hero-wave" id="hero-wave" aria-hidden="true"></canvas>
   </div>
@@ -21,32 +21,66 @@
 </section>
 
 <div class="blog-index">
+  <% if (posts.length === 0) { %>
+    <div class="empty-state">
+      <h3>No posts yet</h3>
+      <p>Posts published will appear here.</p>
+    </div>
+  <% } %>
+
   <% posts.forEach(post => { %>
-    <article class="post-preview">
-      <h2 class="post-title">
-        <a href="/post/<%= post.slug %>"><%= post.title %></a>
-      </h2>
+    <article class="post-preview <%= post.pinned ? 'post-pinned' : '' %>">
       <div class="post-meta">
         <time datetime="<%= post.date.toISOString() %>">
           <%= post.date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
         </time>
-        <% if (post.categories.length > 0) { %>
+        
+        <span class="read-time"><%= post.readingTime %> min read</span>
+
+        <% if (post.mood) { %>
+          <span class="mood-badge"><%= post.mood %></span>
+        <% } %>
+
+        <% if (post.visibility && post.visibility !== 'public') { %>
+          <span class="visibility-badge <%= post.visibility %>">
+            <%= post.visibility %>
+          </span>
+        <% } %>
+
+        <% if (post.pinned) { %>
+          <span class="pin-badge">Pinned</span>
+        <% } %>
+
+        <% if (isAuthenticated) { %>
+          <a href="/admin/edit/<%= post.slug %>" class="quick-edit-link" title="Edit Post">Edit</a>
+        <% } %>
+      </div>
+
+      <h2 class="post-title">
+        <a href="/post/<%= post.slug %>"><%= post.title %></a>
+      </h2>
+
+      <p class="post-excerpt"><%= post.excerpt %></p>
+
+      <div class="post-footer-meta">
+        <% if (post.categories && post.categories.length > 0) { %>
           <span class="categories">
             <% post.categories.forEach(cat => { %>
               <a href="/category/<%= cat %>" class="category-tag"><%= cat %></a>
             <% }); %>
           </span>
         <% } %>
+
+        <% if (post.tags && post.tags.length > 0) { %>
+          <div class="tags">
+            <% post.tags.forEach(tag => { %>
+              <a href="/tag/<%= tag %>" class="tag">#<%= tag %></a>
+            <% }); %>
+          </div>
+        <% } %>
+
+        <a href="/post/<%= post.slug %>" class="read-more">Read more →</a>
       </div>
-      <p class="post-excerpt"><%= post.excerpt %></p>
-      <% if (post.tags.length > 0) { %>
-        <div class="tags">
-          <% post.tags.forEach(tag => { %>
-            <a href="/tag/<%= tag %>" class="tag">#<%= tag %></a>
-          <% }); %>
-        </div>
-      <% } %>
-      <a href="/post/<%= post.slug %>" class="read-more">Read more →</a>
     </article>
   <% }); %>
 
