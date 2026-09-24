@@ -337,14 +337,22 @@ async function loadPosts(options = { includeAll: false }) {
   return sorted.filter(p => p.visibility === 'public');
 }
 
-// Single post lookup
+// Single post lookup with resilient fallback
 async function loadSinglePost(slug) {
   if (process.env.MONGODB_URI) {
-    return await getMongoPostBySlug(slug);
+    try {
+      const mongoPost = await getMongoPostBySlug(slug);
+      if (mongoPost) {
+        return mongoPost;
+      }
+    } catch (err) {
+      console.warn('MongoDB single post error:', err.message);
+    }
   }
 
+  // Fallback to local files if MongoDB is unconfigured, unreachable, or missing this entry
   const all = await loadPosts({ includeAll: true });
-  return all.find(p => p.slug === slug);
+  return all.find(p => p.slug === slug || slugify(p.slug) === slugify(slug));
 }
 
 // Calculate Streak and Stats
@@ -499,9 +507,10 @@ app.get('/', async (req, res) => {
   });
 });
 
-app.get('/post/:slug', async (req, res) => {
+app.get(['/post/:slug', '/posts/:slug', '/posts/:year/:month/:slug'], async (req, res) => {
   const isAuth = checkAuth(req);
-  const post = await loadSinglePost(req.params.slug);
+  const slug = req.params.slug;
+  const post = await loadSinglePost(slug);
 
   if (!post) {
     return res.status(404).render('404', { title: 'Entry Not Found' });
@@ -515,8 +524,9 @@ app.get('/post/:slug', async (req, res) => {
   }
 
   const visiblePosts = await loadPosts({ includeAll: isAuth });
+  const postTags = Array.isArray(post.tags) ? post.tags : [];
   const related = visiblePosts
-    .filter(p => p.slug !== post.slug && p.tags.some(t => post.tags.includes(t)))
+    .filter(p => p.slug !== post.slug && Array.isArray(p.tags) && p.tags.some(t => postTags.includes(t)))
     .slice(0, 3);
 
   res.render('post', { post, related, title: post.title });
