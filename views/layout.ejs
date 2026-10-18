@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= typeof title !== 'undefined' && title ? title + ' - ' : '' %><%= siteTitle %></title>
+<%- include('partials/seo') %>
   <link rel="stylesheet" href="/style.css">
   <link rel="alternate" type="application/rss+xml" title="<%= siteTitle %> Feed" href="/feed">
   <!-- Fonts -->
@@ -22,10 +22,11 @@
     <nav class="navbar">
       <div class="container">
         <div class="nav-brand">
-          <h1 class="site-title">
-            <a href="/"><%= siteTitle %></a>
+          <% const brandTag = currentPath === '/' ? 'h1' : 'div'; %>
+          <<%= brandTag %> class="site-title">
+            <a href="/" title="<%= authorName %>"><%= siteTitle %></a>
             <span class="eq-bars" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></span>
-          </h1>
+          </<%= brandTag %>>
           <span class="site-subtitle"><%= siteSubtitle %></span>
         </div>
         
@@ -63,7 +64,7 @@
       <div class="footer-section">
         <h3><%= siteTitle %></h3>
         <p><%= siteSubtitle %></p>
-        <p class="footer-meta">ML Research Engineer passionate about speech processing, document intelligence, and conversational AI.</p>
+        <p class="footer-meta"><%= authorName %>: ML Research Engineer passionate about speech processing, document intelligence, and conversational AI.</p>
       </div>
       <div class="footer-section">
         <h4>Quick Links</h4>
@@ -80,12 +81,12 @@
         <ul>
           <li><a href="https://github.com/coderatwork7" target="_blank" rel="noopener">GitHub</a></li>
           <li><a href="https://x.com/coderatwork7" target="_blank" rel="noopener">Twitter / X</a></li>
-          <li><a href="https://linkedin.com" target="_blank" rel="noopener">LinkedIn</a></li>
+          <li><a href="https://www.linkedin.com/in/somiljain7/" target="_blank" rel="noopener">LinkedIn</a></li>
         </ul>
       </div>
     </div>
     <div class="footer-bottom">
-      <p>&copy; <%= new Date().getFullYear() %> <%= siteAuthor %> • Built with Node.js & Markdown</p>
+      <p>&copy; <%= new Date().getFullYear() %> <%= authorName %> (<%= siteAuthor %>) • Built with Node.js & Markdown</p>
     </div>
   </footer>
 

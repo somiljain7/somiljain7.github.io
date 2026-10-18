@@ -20,6 +20,7 @@ import {
   saveMongoPost,
   deleteMongoPost
 } from './lib/db.js';
+import { mountAgentRoutes } from './lib/mcp.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,6 +43,8 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'diary_session_secret_defau
 const SITE_TITLE = process.env.SITE_TITLE || '[ CODERATWORK7 ]';
 const SITE_SUBTITLE = process.env.SITE_SUBTITLE || 'ML Research Engineer & Neural Logs';
 const SITE_AUTHOR = process.env.SITE_AUTHOR || 'CODERATWORK7';
+const AUTHOR_NAME = process.env.AUTHOR_NAME || 'Somil Jain';
+const SITE_URL = (process.env.SITE_URL || 'https://mutedmiles.space').replace(/\/+$/, '');
 
 // Ensure directories exist (wrapped in try/catch for read-only serverless runtimes)
 [POSTS_DIR, UPLOADS_DIR, PUBLICATIONS_DIR, TMP_UPLOADS_DIR, TMP_POSTS_DIR].forEach(dir => {
@@ -226,6 +229,8 @@ app.use((req, res, next) => {
   res.locals.siteTitle = SITE_TITLE;
   res.locals.siteSubtitle = SITE_SUBTITLE;
   res.locals.siteAuthor = SITE_AUTHOR;
+  res.locals.authorName = AUTHOR_NAME;
+  res.locals.siteUrl = SITE_URL;
   res.locals.currentPath = req.path;
   res.locals.query = req.query;
   next();
@@ -486,6 +491,9 @@ async function deletePostFile(slug) {
 // PUBLIC WEB ROUTES
 // ==========================================
 
+// MCP endpoint, llms.txt and /post/<slug>.md (must come before the HTML post route)
+mountAgentRoutes(app, { loadPosts, loadSinglePost, siteUrl: SITE_URL, siteTitle: SITE_TITLE, authorName: AUTHOR_NAME });
+
 app.get('/', async (req, res) => {
   const isAuth = checkAuth(req);
   const posts = await loadPosts({ includeAll: isAuth });
@@ -637,22 +645,23 @@ app.get('/feed', async (req, res) => {
   res.send(xml);
 });
 
-app.get('/sitemap', async (req, res) => {
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').send(
+    `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /login\nDisallow: /write\nDisallow: /api/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`
+  );
+});
+
+app.get(['/sitemap.xml', '/sitemap'], async (req, res) => {
   const posts = await loadPosts({ includeAll: false });
-  res.type('application/xml');
+  const pages = ['/', '/about', '/cv', '/publications', '/archives'];
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
   xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-  xml += `  <url><loc>https://mutedmiles.space/</loc></url>\n`;
-  xml += `  <url><loc>https://mutedmiles.space/archives</loc></url>\n`;
-  xml += `  <url><loc>https://mutedmiles.space/stats</loc></url>\n`;
-  xml += `  <url><loc>https://mutedmiles.space/about</loc></url>\n`;
-  
+  pages.forEach(p => { xml += `  <url><loc>${SITE_URL}${p}</loc></url>\n`; });
   posts.forEach(post => {
-    xml += `  <url><loc>https://mutedmiles.space/post/${post.slug}</loc></url>\n`;
+    xml += `  <url><loc>${SITE_URL}/post/${post.slug}</loc><lastmod>${post.date.toISOString().slice(0, 10)}</lastmod></url>\n`;
   });
-  
   xml += '</urlset>';
-  res.send(xml);
+  res.type('application/xml').send(xml);
 });
 
 // ==========================================
